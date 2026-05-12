@@ -1,0 +1,1192 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>note 自動投稿ツール — 全体設計図</title>
+<style>
+  :root {
+    --bg: #FAF7F2;
+    --bg2: #F3EDE3;
+    --bg3: #EDE4D6;
+    --border: #D4C4A8;
+    --text: #3A2E22;
+    --text-light: #6B5744;
+    --text-muted: #9C8570;
+    --brown: #7A4F2B;
+    --brown-dark: #5C3A1E;
+    --phase-a: #F0E6D3;
+    --phase-a-border: #C4905A;
+    --phase-a-head: #8B5E34;
+    --phase-b: #E3EDE3;
+    --phase-b-border: #6A9E6A;
+    --phase-b-head: #3D6E3D;
+    --phase-c: #E3E3ED;
+    --phase-c-border: #7A7AAE;
+    --phase-c-head: #4A4A8A;
+    --note: #EDE3E3;
+    --note-border: #B07070;
+    --note-head: #7A3A3A;
+    --ai: #E3EDE8;
+    --ai-border: #6A9E85;
+    --ai-head: #2E6E54;
+    --shadow: 0 2px 8px rgba(90,60,30,0.10);
+    --shadow-sm: 0 1px 4px rgba(90,60,30,0.08);
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Hiragino Sans', 'Yu Gothic UI', 'Meiryo', sans-serif;
+    font-size: 15px;
+    line-height: 1.7;
+    padding: 0 0 60px;
+  }
+
+  /* ────────────── HEADER ────────────── */
+  .site-header {
+    background: var(--brown-dark);
+    color: #FAF0E0;
+    padding: 36px 48px 32px;
+    border-bottom: 4px solid var(--phase-a-border);
+  }
+  .site-header h1 {
+    font-size: 26px;
+    font-weight: 700;
+    letter-spacing: .04em;
+    margin-bottom: 6px;
+  }
+  .site-header .subtitle {
+    font-size: 13px;
+    opacity: .75;
+    letter-spacing: .08em;
+  }
+  .header-tags {
+    margin-top: 14px;
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+  .tag {
+    background: rgba(255,255,255,.12);
+    border: 1px solid rgba(255,255,255,.25);
+    border-radius: 4px;
+    padding: 2px 10px;
+    font-size: 12px;
+    letter-spacing: .04em;
+  }
+
+  /* ────────────── LAYOUT ────────────── */
+  .page {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 0 32px;
+  }
+
+  section {
+    margin-top: 48px;
+  }
+
+  .section-title {
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--brown-dark);
+    border-left: 4px solid var(--phase-a-border);
+    padding-left: 12px;
+    margin-bottom: 24px;
+    letter-spacing: .03em;
+  }
+
+  /* ────────────── SUMMARY CARDS ────────────── */
+  .summary-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 16px;
+  }
+  .summary-card {
+    background: #fff;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 20px;
+    box-shadow: var(--shadow-sm);
+  }
+  .summary-card .icon {
+    font-size: 28px;
+    margin-bottom: 8px;
+  }
+  .summary-card h3 {
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--brown-dark);
+    margin-bottom: 6px;
+  }
+  .summary-card p {
+    font-size: 13px;
+    color: var(--text-light);
+    line-height: 1.6;
+  }
+
+  /* ────────────── MAIN FLOW ────────────── */
+  .main-flow {
+    display: flex;
+    align-items: stretch;
+    gap: 0;
+    overflow-x: auto;
+    padding-bottom: 8px;
+  }
+  .flow-step {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    min-width: 140px;
+  }
+  .flow-box {
+    width: 130px;
+    border-radius: 8px;
+    padding: 14px 10px;
+    text-align: center;
+    box-shadow: var(--shadow-sm);
+    border: 1.5px solid;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+  }
+  .flow-box .flow-icon { font-size: 22px; }
+  .flow-box .flow-label {
+    font-size: 12px;
+    font-weight: 700;
+    line-height: 1.3;
+  }
+  .flow-box .flow-sub {
+    font-size: 11px;
+    opacity: .75;
+    line-height: 1.3;
+  }
+  .flow-arrow {
+    display: flex;
+    align-items: center;
+    padding: 0 6px;
+    font-size: 22px;
+    color: var(--text-muted);
+    align-self: center;
+  }
+
+  .flow-user   { background: var(--bg3);     border-color: var(--brown);           color: var(--brown-dark); }
+  .flow-setup  { background: #FFF8F0;        border-color: #D4A855;                color: #7A5820; }
+  .flow-a      { background: var(--phase-a); border-color: var(--phase-a-border);  color: var(--phase-a-head); }
+  .flow-b      { background: var(--phase-b); border-color: var(--phase-b-border);  color: var(--phase-b-head); }
+  .flow-c      { background: var(--phase-c); border-color: var(--phase-c-border);  color: var(--phase-c-head); }
+  .flow-note   { background: var(--note);    border-color: var(--note-border);     color: var(--note-head); }
+
+  /* ────────────── ARCHITECTURE LAYERS ────────────── */
+  .arch-wrap {
+    background: #fff;
+    border: 1.5px solid var(--border);
+    border-radius: 10px;
+    overflow: hidden;
+    box-shadow: var(--shadow);
+  }
+  .arch-layer {
+    padding: 18px 24px;
+    border-bottom: 1.5px solid var(--border);
+  }
+  .arch-layer:last-child { border-bottom: none; }
+  .arch-layer-title {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    margin-bottom: 12px;
+    padding: 3px 8px;
+    border-radius: 4px;
+    display: inline-block;
+  }
+  .arch-items {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .arch-item {
+    border-radius: 6px;
+    padding: 8px 14px;
+    font-size: 13px;
+    border: 1px solid;
+    line-height: 1.4;
+  }
+  .arch-item strong { display: block; font-size: 12px; }
+  .arch-item span   { font-size: 11px; opacity: .75; }
+
+  .layer-gui   { background: #FFF8F0; }
+  .layer-gui   .arch-layer-title { background: #F5E6C8; color: #7A5820; }
+  .layer-gui   .arch-item { background: #FFFAF3; border-color: #D4B878; color: #5C3A1E; }
+
+  .layer-core  { background: #F5F5FF; }
+  .layer-core  .arch-layer-title { background: #E0E0F8; color: #3A3A7A; }
+  .layer-core  .arch-item { background: #FAFAFF; border-color: #A0A0D8; color: #2E2E6A; }
+
+  .layer-int   { background: #F0F8F3; }
+  .layer-int   .arch-layer-title { background: #D0EAD8; color: #2E6E44; }
+  .layer-int   .arch-item { background: #F5FFF8; border-color: #80C898; color: #1E5030; }
+
+  .layer-store { background: var(--bg2); }
+  .layer-store .arch-layer-title { background: var(--bg3); color: var(--brown-dark); }
+  .layer-store .arch-item { background: var(--bg); border-color: var(--border); color: var(--text-light); }
+
+  /* ────────────── PHASES ────────────── */
+  .phases-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 16px;
+  }
+  .phase-card {
+    border-radius: 10px;
+    border: 1.5px solid;
+    overflow: hidden;
+    box-shadow: var(--shadow-sm);
+  }
+  .phase-head {
+    padding: 12px 16px;
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: .04em;
+  }
+  .phase-body {
+    padding: 16px;
+    background: #fff;
+    font-size: 13px;
+  }
+  .phase-body ul {
+    padding-left: 0;
+    list-style: none;
+  }
+  .phase-body li {
+    padding: 5px 0 5px 18px;
+    position: relative;
+    color: var(--text-light);
+    border-bottom: 1px dotted var(--border);
+    line-height: 1.5;
+  }
+  .phase-body li:last-child { border-bottom: none; }
+  .phase-body li::before {
+    content: '›';
+    position: absolute;
+    left: 4px;
+    font-weight: 700;
+  }
+  .phase-body .badge {
+    display: inline-block;
+    font-size: 10px;
+    padding: 1px 6px;
+    border-radius: 3px;
+    font-weight: 700;
+    margin-left: 4px;
+    vertical-align: middle;
+  }
+
+  .phase-a-card { border-color: var(--phase-a-border); }
+  .phase-a-card .phase-head { background: var(--phase-a); color: var(--phase-a-head); }
+  .phase-a-card li::before { color: var(--phase-a-border); }
+  .phase-a-card .badge { background: var(--phase-a); color: var(--phase-a-head); border: 1px solid var(--phase-a-border); }
+
+  .phase-b-card { border-color: var(--phase-b-border); }
+  .phase-b-card .phase-head { background: var(--phase-b); color: var(--phase-b-head); }
+  .phase-b-card li::before { color: var(--phase-b-border); }
+  .phase-b-card .badge { background: var(--phase-b); color: var(--phase-b-head); border: 1px solid var(--phase-b-border); }
+
+  .phase-c-card { border-color: var(--phase-c-border); }
+  .phase-c-card .phase-head { background: var(--phase-c); color: var(--phase-c-head); }
+  .phase-c-card li::before { color: var(--phase-c-border); }
+  .phase-c-card .badge { background: var(--phase-c); color: var(--phase-c-head); border: 1px solid var(--phase-c-border); }
+
+  /* ────────────── PHASE C DETAIL ────────────── */
+  .phase-c-steps {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+  }
+  .step-card {
+    background: #fff;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 14px 16px;
+    box-shadow: var(--shadow-sm);
+    display: flex;
+    gap: 12px;
+  }
+  .step-num {
+    width: 28px;
+    height: 28px;
+    min-width: 28px;
+    border-radius: 50%;
+    background: var(--phase-c);
+    border: 1.5px solid var(--phase-c-border);
+    color: var(--phase-c-head);
+    font-size: 12px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .step-content h4 {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--text);
+    margin-bottom: 3px;
+  }
+  .step-content p {
+    font-size: 12px;
+    color: var(--text-light);
+    line-height: 1.5;
+  }
+  .model-tag {
+    display: inline-block;
+    font-size: 10px;
+    padding: 1px 6px;
+    border-radius: 3px;
+    font-weight: 700;
+    margin-top: 4px;
+  }
+  .model-sonnet { background: #E3E3F8; color: #3A3A8A; border: 1px solid #AAAAD8; }
+  .model-haiku  { background: #E3F0E8; color: #2E5A3A; border: 1px solid #80B890; }
+  .model-dalle  { background: #F0E8F0; color: #5A2E5A; border: 1px solid #B880B8; }
+  .model-search { background: #F0EAE0; color: #5A4020; border: 1px solid #C0A060; }
+  .model-pw     { background: #F0E8E8; color: #5A2E2E; border: 1px solid #C08080; }
+
+  /* ────────────── AI TABLE ────────────── */
+  .ai-table {
+    width: 100%;
+    border-collapse: collapse;
+    background: #fff;
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: var(--shadow-sm);
+    font-size: 13px;
+  }
+  .ai-table th {
+    background: var(--brown-dark);
+    color: #FAF0E0;
+    padding: 10px 14px;
+    text-align: left;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: .06em;
+  }
+  .ai-table td {
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--border);
+    color: var(--text-light);
+    vertical-align: top;
+  }
+  .ai-table tr:last-child td { border-bottom: none; }
+  .ai-table tr:nth-child(even) td { background: var(--bg2); }
+  .ai-table td:first-child { color: var(--text); font-weight: 600; }
+
+  /* ────────────── STORAGE ────────────── */
+  .storage-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+  }
+  .storage-card {
+    background: #fff;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: var(--shadow-sm);
+  }
+  .storage-head {
+    background: var(--bg3);
+    padding: 10px 16px;
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--brown-dark);
+    border-bottom: 1px solid var(--border);
+  }
+  .storage-body {
+    padding: 14px 16px;
+    font-size: 12.5px;
+    color: var(--text-light);
+    line-height: 1.7;
+  }
+  .file-tree {
+    font-family: 'Consolas', 'Courier New', monospace;
+    font-size: 12px;
+    line-height: 1.8;
+    color: var(--text);
+  }
+  .file-tree .dir  { color: var(--brown); font-weight: 700; }
+  .file-tree .file { color: var(--text-light); }
+  .file-tree .comment { color: var(--text-muted); font-style: italic; }
+
+  /* ────────────── SECURITY ────────────── */
+  .security-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 14px;
+  }
+  .security-item {
+    background: #fff;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 16px;
+    display: flex;
+    gap: 12px;
+    box-shadow: var(--shadow-sm);
+  }
+  .sec-icon {
+    font-size: 24px;
+    min-width: 32px;
+  }
+  .sec-content h4 {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--text);
+    margin-bottom: 4px;
+  }
+  .sec-content p {
+    font-size: 12.5px;
+    color: var(--text-light);
+    line-height: 1.55;
+  }
+
+  /* ────────────── TIMELINE ────────────── */
+  .timeline {
+    display: flex;
+    gap: 0;
+    overflow-x: auto;
+    padding-bottom: 8px;
+  }
+  .tl-item {
+    flex: 1;
+    min-width: 140px;
+    position: relative;
+  }
+  .tl-item:not(:last-child)::after {
+    content: '';
+    position: absolute;
+    top: 20px;
+    right: -1px;
+    width: 2px;
+    height: 40px;
+    background: var(--border);
+    z-index: 1;
+  }
+  .tl-header {
+    background: var(--bg3);
+    border: 1.5px solid var(--border);
+    border-radius: 6px 6px 0 0;
+    padding: 8px 12px;
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--brown-dark);
+    text-align: center;
+  }
+  .tl-item.active .tl-header {
+    background: var(--brown-dark);
+    border-color: var(--brown-dark);
+    color: #FAF0E0;
+  }
+  .tl-body {
+    background: #fff;
+    border: 1.5px solid var(--border);
+    border-top: none;
+    border-radius: 0 0 6px 6px;
+    padding: 10px 12px;
+    font-size: 12px;
+    color: var(--text-light);
+    line-height: 1.55;
+  }
+  .tl-arrow {
+    display: flex;
+    align-items: flex-start;
+    padding-top: 18px;
+    padding-left: 4px;
+    padding-right: 4px;
+    font-size: 18px;
+    color: var(--text-muted);
+    min-width: 24px;
+    flex-shrink: 0;
+  }
+
+  /* ────────────── KNOWLEDGE MAP ────────────── */
+  .knowledge-table {
+    width: 100%;
+    border-collapse: collapse;
+    background: #fff;
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: var(--shadow-sm);
+    font-size: 13px;
+  }
+  .knowledge-table th {
+    background: var(--bg3);
+    color: var(--brown-dark);
+    padding: 9px 14px;
+    text-align: left;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: .06em;
+    border-bottom: 1.5px solid var(--border);
+  }
+  .knowledge-table td {
+    padding: 9px 14px;
+    border-bottom: 1px solid var(--border);
+    color: var(--text-light);
+    vertical-align: middle;
+  }
+  .knowledge-table tr:last-child td { border-bottom: none; }
+  .knowledge-table tr:nth-child(even) td { background: var(--bg2); }
+  .knowledge-table td:first-child {
+    color: var(--text);
+    font-weight: 600;
+    white-space: nowrap;
+  }
+  .code {
+    font-family: 'Consolas', monospace;
+    font-size: 11.5px;
+    background: var(--bg2);
+    padding: 2px 6px;
+    border-radius: 3px;
+    color: var(--phase-c-head);
+  }
+
+  /* ────────────── NOTE ────────────── */
+  .notice {
+    background: #FFFAF0;
+    border: 1.5px solid #D4B868;
+    border-radius: 8px;
+    padding: 14px 18px;
+    font-size: 13px;
+    color: #5C4010;
+    margin-top: 20px;
+  }
+  .notice strong { color: #7A5010; }
+
+  /* ────────────── RESPONSIVE ────────────── */
+  @media (max-width: 800px) {
+    .summary-grid { grid-template-columns: 1fr; }
+    .phases-grid  { grid-template-columns: 1fr; }
+    .phase-c-steps { grid-template-columns: 1fr; }
+    .security-grid { grid-template-columns: 1fr; }
+    .storage-grid  { grid-template-columns: 1fr; }
+    .main-flow { flex-direction: column; align-items: flex-start; }
+    .flow-arrow { transform: rotate(90deg); padding: 4px 0; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ═══════════ HEADER ═══════════ -->
+<header class="site-header">
+  <div class="page">
+    <h1>note 自動投稿ツール — 全体設計図</h1>
+    <p class="subtitle">Architecture Overview / 開発者向けレビュー資料</p>
+    <div class="header-tags">
+      <span class="tag">Python + CustomTkinter</span>
+      <span class="tag">Playwright</span>
+      <span class="tag">Claude API (Anthropic)</span>
+      <span class="tag">DALL-E 3 (OpenAI)</span>
+      <span class="tag">Windows EXE 配布</span>
+    </div>
+  </div>
+</header>
+
+<div class="page">
+
+<!-- ═══════════ 1. このツールの目的 ═══════════ -->
+<section>
+  <h2 class="section-title">このツールでできること</h2>
+  <div class="summary-grid">
+    <div class="summary-card">
+      <div class="icon">🎙</div>
+      <h3>体験をヒアリング</h3>
+      <p>AIがユーザーの日常・経験・悩みを対話形式で引き出し、「売れるジャンル」と読者像を自動で見つけ出す。</p>
+    </div>
+    <div class="summary-card">
+      <div class="icon">✍️</div>
+      <h3>記事を全自動執筆</h3>
+      <p>タイトル案10本の採点・本文（有料10,000字以上・無料3,000〜5,000字）・アイキャッチ画像を一気通貫で生成する。</p>
+    </div>
+    <div class="summary-card">
+      <div class="icon">📤</div>
+      <h3>note へ自動投稿</h3>
+      <p>ブラウザを自動操作してタイトル・本文・アイキャッチ・価格を設定し、下書き保存または公開まで実行する。</p>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════ 2. 全体の流れ ═══════════ -->
+<section>
+  <h2 class="section-title">全体の流れ</h2>
+  <div class="main-flow">
+
+    <div class="flow-step">
+      <div class="flow-box flow-user">
+        <div class="flow-icon">👤</div>
+        <div class="flow-label">起動</div>
+        <div class="flow-sub">ユーザーがアプリを<br>ダブルクリック</div>
+      </div>
+    </div>
+    <div class="flow-arrow">→</div>
+
+    <div class="flow-step">
+      <div class="flow-box flow-setup">
+        <div class="flow-icon">⚙️</div>
+        <div class="flow-label">初回セットアップ</div>
+        <div class="flow-sub">APIキー・<br>note認証情報入力<br>（初回のみ）</div>
+      </div>
+    </div>
+    <div class="flow-arrow">→</div>
+
+    <div class="flow-step">
+      <div class="flow-box flow-a">
+        <div class="flow-icon">🎙</div>
+        <div class="flow-label">Phase A</div>
+        <div class="flow-sub">ヒアリング対話<br>6項目が揃うまで</div>
+      </div>
+    </div>
+    <div class="flow-arrow">→</div>
+
+    <div class="flow-step">
+      <div class="flow-box flow-b">
+        <div class="flow-icon">🗂</div>
+        <div class="flow-label">Phase B</div>
+        <div class="flow-sub">ジャンル確定<br>ペルソナ生成<br>10区画マップ作成</div>
+      </div>
+    </div>
+    <div class="flow-arrow">→</div>
+
+    <div class="flow-step">
+      <div class="flow-box flow-c">
+        <div class="flow-icon">📝</div>
+        <div class="flow-label">Phase C</div>
+        <div class="flow-sub">10記事を連続生成<br>有料1本 + 無料9本</div>
+      </div>
+    </div>
+    <div class="flow-arrow">→</div>
+
+    <div class="flow-step">
+      <div class="flow-box flow-note">
+        <div class="flow-icon">📤</div>
+        <div class="flow-label">note 投稿</div>
+        <div class="flow-sub">ブラウザ自動操作<br>下書き保存 or 公開</div>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="notice">
+    <strong>2回目以降の起動:</strong> 未完了プロジェクトが残っている場合は「前回の続きから始めますか？」と確認。YES を選ぶとヒアリングをスキップして生成の続きから再開できる。全10区画を使い切ったプロジェクトは AI が新しい10区画を自動追加し、理論上は被りなしで無限に生成を継続できる。
+  </div>
+</section>
+
+<!-- ═══════════ 3. アーキテクチャ構成 ═══════════ -->
+<section>
+  <h2 class="section-title">アーキテクチャ構成（4層）</h2>
+  <div class="arch-wrap">
+
+    <div class="arch-layer layer-gui">
+      <div class="arch-layer-title">GUI 層 — CustomTkinter (デスクトップ画面)</div>
+      <div class="arch-items">
+        <div class="arch-item"><strong>初回セットアップウィザード</strong><span>APIキー・note認証情報の入力</span></div>
+        <div class="arch-item"><strong>メインダッシュボード</strong><span>プロジェクト一覧・新規開始</span></div>
+        <div class="arch-item"><strong>ヒアリングチャット画面</strong><span>Phase A 対話UI</span></div>
+        <div class="arch-item"><strong>生成進捗ビュー</strong><span>Phase C「1/10: タイトル生成中…」</span></div>
+        <div class="arch-item"><strong>記事ライブラリ</strong><span>生成済み記事の履歴表示</span></div>
+      </div>
+    </div>
+
+    <div class="arch-layer layer-core">
+      <div class="arch-layer-title">コア処理層 — Phase A / B / C パイプライン</div>
+      <div class="arch-items">
+        <div class="arch-item"><strong>hearing_runner.py</strong><span>ヒアリング対話制御（起動セリフ固定）</span></div>
+        <div class="arch-item"><strong>completion_check.py</strong><span>6項目充足チェック・Phase移行判定</span></div>
+        <div class="arch-item"><strong>genre_mapper.py</strong><span>100ジャンルへの自動マッピング</span></div>
+        <div class="arch-item"><strong>persona_builder.py</strong><span>ペルソナ8項目の自動生成</span></div>
+        <div class="arch-item"><strong>coverage_map.py</strong><span>10区画の状態管理・JSON永続化</span></div>
+        <div class="arch-item"><strong>pipeline.py</strong><span>Phase C の全ステップ制御</span></div>
+        <div class="arch-item"><strong>title.py</strong><span>タイトル10案生成・採点・自動採用</span></div>
+        <div class="arch-item"><strong>research.py</strong><span>web検索で8項目素材収集</span></div>
+        <div class="arch-item"><strong>structure.py</strong><span>結起承転 構成生成</span></div>
+        <div class="arch-item"><strong>body.py</strong><span>本文生成・文体ルール適用</span></div>
+        <div class="arch-item"><strong>quality_check.py</strong><span>品質チェック・NGなら最大2回リトライ</span></div>
+        <div class="arch-item"><strong>thumbnail.py</strong><span>8ステップ判断 → DALL-E 3用プロンプト生成</span></div>
+        <div class="arch-item"><strong>price_advisor.py</strong><span>4軸で価格帯を AI 提案</span></div>
+      </div>
+    </div>
+
+    <div class="arch-layer layer-int">
+      <div class="arch-layer-title">インテグレーション層 — AI API + note 操作</div>
+      <div class="arch-items">
+        <div class="arch-item"><strong>anthropic_client.py</strong><span>Claude API (Prompt Caching 対応)</span></div>
+        <div class="arch-item"><strong>openai_client.py</strong><span>DALL-E 3 画像生成</span></div>
+        <div class="arch-item"><strong>login.py</strong><span>note.com へのログイン・セッション保存</span></div>
+        <div class="arch-item"><strong>post.py</strong><span>タイトル・本文・タグ・価格の投稿</span></div>
+        <div class="arch-item"><strong>thumbnail_upload.py</strong><span>アイキャッチ画像のアップロード</span></div>
+        <div class="arch-item"><strong>paid_zone_marker.py</strong><span>「ここから有料」境界線の設定</span></div>
+      </div>
+    </div>
+
+    <div class="arch-layer layer-store">
+      <div class="arch-layer-title">ストレージ層 — すべてローカル保存（%APPDATA%）</div>
+      <div class="arch-items">
+        <div class="arch-item"><strong>hearing.json</strong><span>ヒアリング会話ログ</span></div>
+        <div class="arch-item"><strong>coverage_map.json</strong><span>10区画の使用状況・生成済み記事情報</span></div>
+        <div class="arch-item"><strong>articles/ (Markdown)</strong><span>生成済み記事本文ファイル</span></div>
+        <div class="arch-item"><strong>thumbnails/ (PNG)</strong><span>生成済みアイキャッチ画像</span></div>
+        <div class="arch-item"><strong>OS Keychain</strong><span>APIキー・noteパスワード（ファイルに書き出さない）</span></div>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<!-- ═══════════ 4. 各フェーズの詳細 ═══════════ -->
+<section>
+  <h2 class="section-title">各フェーズの詳細</h2>
+  <div class="phases-grid">
+
+    <div class="phase-card phase-a-card">
+      <div class="phase-head">Phase A ─ ヒアリング対話　（Claude Haiku 4.5）</div>
+      <div class="phase-body">
+        <ul>
+          <li>起動セリフは固定（変更不可）。AIキャラクターは「横から共有する仲間」のスタンス</li>
+          <li>1回1問ルール厳守。複数質問は禁止</li>
+          <li>相手の言葉を「オウム返し＋意味の言語化」してから次へ進む</li>
+          <li>直接聞かず体験を掘る迂回質問で6項目を引き出す</li>
+          <li>①発信ジャンル ②ターゲット読者 ③深い悩み ④最悪の未来 ⑤解決策 ⑥最高の未来 が揃ったら自動で Phase B へ</li>
+          <li>会話ログ全文を <span class="badge">hearing.json</span> に保存</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="phase-card phase-b-card">
+      <div class="phase-head">Phase B ─ ジャンル・ペルソナ確定　（Claude Sonnet 4.6）</div>
+      <div class="phase-body">
+        <ul>
+          <li>会話ログから100ジャンルリストへ自動マッピング → 最適ジャンルを1つ自動確定</li>
+          <li>ペルソナ8項目（名前・年齢・職業・悩み・購入理由 等）を1回のAPIコールで出力</li>
+          <li>ジャンルを10区画に分割（カバレッジマップ生成）</li>
+          <li>有料記事1本 + 無料記事9本の割り当てを自動決定</li>
+          <li>ユーザーの承認なしにそのまま Phase C へ移行（確認不要・自動進行）</li>
+          <li>結果は画面に表示する</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="phase-card phase-c-card">
+      <div class="phase-head">Phase C ─ 10記事の連続生成　（全自動）</div>
+      <div class="phase-body">
+        <ul>
+          <li>各記事について 8ステップを順番に実行（右欄参照）</li>
+          <li>有料記事: 10,000字以上。無料記事: 3,000〜5,000字</li>
+          <li>品質チェックで NG なら最大2回まで自動リトライ</li>
+          <li>1本生成完了ごとに coverage_map.json を更新</li>
+          <li>10本完成で完了通知</li>
+          <li>途中でストップしても、次回起動時に続きから再開できる</li>
+        </ul>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<!-- ═══════════ 5. Phase C 8ステップ詳細 ═══════════ -->
+<section>
+  <h2 class="section-title">Phase C ─ 1記事あたりの8ステップ</h2>
+  <div class="phase-c-steps">
+
+    <div class="step-card">
+      <div class="step-num">1</div>
+      <div class="step-content">
+        <h4>タイトル10案生成 + 採点 + 自動採用</h4>
+        <p>30文字前後のタイトルを10案生成。ターゲット明確性・クリック強度・内容一致性など5軸で100点満点採点。最高得点を自動採用。</p>
+        <span class="model-tag model-sonnet">Claude Sonnet 4.6</span>
+      </div>
+    </div>
+
+    <div class="step-card">
+      <div class="step-num">2</div>
+      <div class="step-content">
+        <h4>リサーチ（web検索で素材収集）</h4>
+        <p>web_search ツールを有効化し、現状・問題点・失敗事例・成功事例・海外研究など8項目の素材をURL付きで収集する。</p>
+        <span class="model-tag model-sonnet">Claude Sonnet 4.6</span>
+        <span class="model-tag model-search">web_search 有効</span>
+      </div>
+    </div>
+
+    <div class="step-card">
+      <div class="step-num">3</div>
+      <div class="step-content">
+        <h4>結起承転 構成生成</h4>
+        <p>有料記事: 無料ゾーン（結→起→承→転の渇望を作る）＋「ここから有料」マーカー＋有料ゾーン（具体手順）。無料記事: 結起承転で完結。</p>
+        <span class="model-tag model-sonnet">Claude Sonnet 4.6</span>
+      </div>
+    </div>
+
+    <div class="step-card">
+      <div class="step-num">4</div>
+      <div class="step-content">
+        <h4>本文生成</h4>
+        <p>冒頭は読者の心の声を「」で3〜4つ。本文はです・ます調統一、同語尾3連続禁止、感情6:理解4の比率、情景描写を含める。AI語禁止。</p>
+        <span class="model-tag model-sonnet">Claude Sonnet 4.6</span>
+      </div>
+    </div>
+
+    <div class="step-card">
+      <div class="step-num">5</div>
+      <div class="step-content">
+        <h4>品質チェック</h4>
+        <p>構成チェック・文体チェック・読者チェック・文字数チェックの4カテゴリ全項目を確認。NGがあれば最大2回まで自動リトライ。</p>
+        <span class="model-tag model-haiku">Claude Haiku 4.5</span>
+      </div>
+    </div>
+
+    <div class="step-card">
+      <div class="step-num">6</div>
+      <div class="step-content">
+        <h4>アイキャッチ画像生成</h4>
+        <p>8ステップ自動判断（タイトル構造分類→人物使用判断→ペルソナ性別年齢参照→色設計）でDALL-E 3用英語プロンプトを自動生成・画像保存。</p>
+        <span class="model-tag model-dalle">DALL-E 3 (OpenAI)</span>
+      </div>
+    </div>
+
+    <div class="step-card">
+      <div class="step-num">7</div>
+      <div class="step-content">
+        <h4>note へ投稿（ブラウザ自動操作）</h4>
+        <p>Playwrightでブラウザを操作し、タイトル・本文・タグ・価格を入力。アイキャッチをアップロード。有料記事は境界線を自動設定。デフォルトは下書き保存。</p>
+        <span class="model-tag model-pw">Playwright</span>
+      </div>
+    </div>
+
+    <div class="step-card">
+      <div class="step-num">8</div>
+      <div class="step-content">
+        <h4>進捗を記録</h4>
+        <p>coverage_map.json の該当区画を used: true、タイトル・生成日時を書き込み。次の記事へ進む。10本完了で完了通知を表示。</p>
+        <span class="model-tag" style="background:#F0F0F0;color:#555;border:1px solid #ccc;">ローカル保存</span>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<!-- ═══════════ 6. AI 構成表 ═══════════ -->
+<section>
+  <h2 class="section-title">AI 構成とコスト概算</h2>
+  <table class="ai-table">
+    <thead>
+      <tr>
+        <th>工程</th>
+        <th>プロバイダ</th>
+        <th>モデル</th>
+        <th>選択理由</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>ヒアリング対話・ジャンルマッピング</td>
+        <td>Anthropic</td>
+        <td><span class="model-tag model-haiku" style="font-size:12px;">Claude Haiku 4.5</span></td>
+        <td>会話制御など軽量タスク。低コスト・高速</td>
+      </tr>
+      <tr>
+        <td>タイトル採点・構成生成</td>
+        <td>Anthropic</td>
+        <td><span class="model-tag model-sonnet" style="font-size:12px;">Claude Sonnet 4.6</span></td>
+        <td>採点ロジックや構造設計に高精度が必要</td>
+      </tr>
+      <tr>
+        <td>リサーチ（web_search付き）</td>
+        <td>Anthropic</td>
+        <td><span class="model-tag model-sonnet" style="font-size:12px;">Claude Sonnet 4.6</span></td>
+        <td>Anthropic 組込の web_search ツールを使用</td>
+      </tr>
+      <tr>
+        <td>本文生成（10,000字以上）</td>
+        <td>Anthropic</td>
+        <td><span class="model-tag model-sonnet" style="font-size:12px;">Claude Sonnet 4.6</span></td>
+        <td>日本語長文・文体ルール遵守に最高品質が必要</td>
+      </tr>
+      <tr>
+        <td>本文品質チェック</td>
+        <td>Anthropic</td>
+        <td><span class="model-tag model-haiku" style="font-size:12px;">Claude Haiku 4.5</span></td>
+        <td>チェックリスト評価は軽量で十分</td>
+      </tr>
+      <tr>
+        <td>アイキャッチ画像生成</td>
+        <td>OpenAI</td>
+        <td><span class="model-tag model-dalle" style="font-size:12px;">DALL-E 3 Standard</span></td>
+        <td>ナレッジ6章のプロンプト設計がDALL-E 3前提</td>
+      </tr>
+    </tbody>
+  </table>
+  <div class="notice">
+    <strong>コスト目安:</strong> 10記事1セットの生成で <strong>300〜500円程度</strong>（ユーザー負担）。ナレッジドキュメントをくり返し参照する部分は <strong>Prompt Caching（5分TTL）</strong> を使いコストを削減。APIキーはユーザーが自分で用意・保持し、運営側には渡らない。
+  </div>
+</section>
+
+<!-- ═══════════ 7. ナレッジとコードの対応 ═══════════ -->
+<section>
+  <h2 class="section-title">ナレッジドキュメントとコードの対応</h2>
+  <table class="knowledge-table">
+    <thead>
+      <tr>
+        <th>ナレッジ章</th>
+        <th>内容（抜粋）</th>
+        <th>実装ファイル</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>1章: 100ジャンルリスト</td>
+        <td>AI・SNS・副業・投資・キャリア・恋愛・美容・教育・メンタル・生活 × 各10テーマ</td>
+        <td><span class="code">phase_b/genre_mapper.py</span></td>
+      </tr>
+      <tr>
+        <td>2章: タイトル設計・採点</td>
+        <td>10案生成 → 5軸100点採点 → 最高点を自動採用</td>
+        <td><span class="code">phase_c/title.py</span></td>
+      </tr>
+      <tr>
+        <td>3章: ヒアリング対話フロー</td>
+        <td>起動セリフ・Phase1〜4・6問充足判定・迂回質問</td>
+        <td><span class="code">phase_a/hearing_runner.py</span><br><span class="code">phase_a/completion_check.py</span></td>
+      </tr>
+      <tr>
+        <td>3-6: ペルソナ出力形式</td>
+        <td>名前・年齢・職業・家族構成・悩み・購入理由など8項目</td>
+        <td><span class="code">phase_b/persona_builder.py</span></td>
+      </tr>
+      <tr>
+        <td>3-7: リサーチプロンプト</td>
+        <td>web_search有効化・8項目素材収集・URL必須・文章禁止</td>
+        <td><span class="code">phase_c/research.py</span></td>
+      </tr>
+      <tr>
+        <td>4章: 結起承転 構成</td>
+        <td>結論先出し → 起（苦労）→ 承（原因）→ 転（解決の糸口）</td>
+        <td><span class="code">phase_c/structure.py</span></td>
+      </tr>
+      <tr>
+        <td>5章: コピーライティング</td>
+        <td>冒頭の心の声・です・ます調・同語尾3連続禁止・AI語禁止</td>
+        <td><span class="code">phase_c/body.py</span></td>
+      </tr>
+      <tr>
+        <td>5-7: 品質チェックリスト</td>
+        <td>構成・文体・読者・文字数の4カテゴリを全チェック</td>
+        <td><span class="code">phase_c/quality_check.py</span></td>
+      </tr>
+      <tr>
+        <td>6章: アイキャッチ生成</td>
+        <td>8ステップ自動判断 → 英語プロンプト生成 → DALL-E 3</td>
+        <td><span class="code">phase_c/thumbnail.py</span></td>
+      </tr>
+      <tr>
+        <td>7章: 価格設計</td>
+        <td>解決策具体性・購買力・ジャンル相場・希少性の4軸でAI提案</td>
+        <td><span class="code">pricing/price_advisor.py</span></td>
+      </tr>
+      <tr>
+        <td>8章: 複数記事連続生成</td>
+        <td>10区画カバレッジマップ・JSON状態管理・2回目以降の再開</td>
+        <td><span class="code">phase_b/coverage_map.py</span><br><span class="code">phase_c/pipeline.py</span></td>
+      </tr>
+    </tbody>
+  </table>
+</section>
+
+<!-- ═══════════ 8. データ保存構造 ═══════════ -->
+<section>
+  <h2 class="section-title">データの保存構造（すべてユーザーのPC内）</h2>
+  <div class="storage-grid">
+
+    <div class="storage-card">
+      <div class="storage-head">📁 ローカルファイル (%APPDATA%\.note-autoposter\)</div>
+      <div class="storage-body">
+        <div class="file-tree">
+<span class="dir">.note-autoposter/</span>
+├── <span class="dir">projects/</span>
+│   └── <span class="dir">{project_id}/</span>
+│       ├── <span class="file">hearing.json</span>       <span class="comment">ヒアリング会話ログ</span>
+│       ├── <span class="file">coverage_map.json</span>  <span class="comment">10区画の使用状況</span>
+│       ├── <span class="dir">articles/</span>
+│       │   ├── <span class="file">1_paid.md</span>
+│       │   └── <span class="file">2_free.md ...</span>
+│       └── <span class="dir">thumbnails/</span>
+│           ├── <span class="file">1.png</span>
+│           └── <span class="file">2.png ...</span>
+└── <span class="dir">logs/</span>
+    └── <span class="file">app.log</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="storage-card">
+      <div class="storage-head">🔐 OS Keychain（Credential Manager）</div>
+      <div class="storage-body">
+        <p>以下の情報はOSのKeychain（Windows Credential Manager / macOS Keychain）に保存します。<strong>テキストファイルには書き出しません。</strong></p>
+        <br>
+        <ul style="padding-left:16px;font-size:13px;color:var(--text-light);line-height:2;">
+          <li>Anthropic API キー</li>
+          <li>OpenAI API キー</li>
+          <li>note.com メールアドレス</li>
+          <li>note.com パスワード</li>
+        </ul>
+        <br>
+        <p style="font-size:12px;">なお <code style="background:var(--bg2);padding:1px 4px;border-radius:3px;">session.json</code>（ログイン済みブラウザ情報）はローカルファイルとして保持します。</p>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<!-- ═══════════ 9. セキュリティ設計 ═══════════ -->
+<section>
+  <h2 class="section-title">セキュリティ設計</h2>
+  <div class="security-grid">
+
+    <div class="security-item">
+      <div class="sec-icon">🔑</div>
+      <div class="sec-content">
+        <h4>APIキー・認証情報はOS Keychain保存</h4>
+        <p>Python <code style="font-size:11px;background:var(--bg2);padding:1px 4px;border-radius:3px;">keyring</code> ライブラリ経由でWindowsCredential Manager / macOS Keychain に保存。設定ファイルや環境変数には書き出さない。</p>
+      </div>
+    </div>
+
+    <div class="security-item">
+      <div class="sec-icon">📡</div>
+      <div class="sec-content">
+        <h4>外部送信先は3か所のみ</h4>
+        <p>Anthropic（Claude API）/ OpenAI（DALL-E 3）/ note.com の3か所のみ。<strong>運営サーバーへの送信はゼロ。</strong>ユーザーデータはすべてユーザーのPCとAPIプロバイダー間で完結する。</p>
+      </div>
+    </div>
+
+    <div class="security-item">
+      <div class="sec-icon">🫣</div>
+      <div class="sec-content">
+        <h4>ログのマスキング</h4>
+        <p>アプリログ（app.log）へ書き出す際に、APIキー・パスワードなどの機密情報を自動でマスク処理する。</p>
+      </div>
+    </div>
+
+    <div class="security-item">
+      <div class="sec-icon">📂</div>
+      <div class="sec-content">
+        <h4>オープンソース化（推奨）</h4>
+        <p>GitHubでソースコードを公開することで「何がどこに送信されるか」をユーザーが自分で確認できる透明性を担保する。</p>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<!-- ═══════════ 10. 開発フェーズ ═══════════ -->
+<section>
+  <h2 class="section-title">開発フェーズ</h2>
+  <div class="timeline">
+
+    <div class="tl-item active">
+      <div class="tl-header">MVP 1</div>
+      <div class="tl-body">CLIでPhase A→B→C を1記事通す。本文のみ生成。画像なし。投稿は既存 post.py に丸投げ。</div>
+    </div>
+    <div class="tl-arrow">→</div>
+
+    <div class="tl-item">
+      <div class="tl-header">MVP 2</div>
+      <div class="tl-body">DALL-E 3 アイキャッチ追加。有料/無料ゾーン区別。タグ・価格入力の実装。</div>
+    </div>
+    <div class="tl-arrow">→</div>
+
+    <div class="tl-item">
+      <div class="tl-header">MVP 3</div>
+      <div class="tl-body">10記事の連続生成。coverage_map 永続化。2回目以降の続き再開に対応。</div>
+    </div>
+    <div class="tl-arrow">→</div>
+
+    <div class="tl-item">
+      <div class="tl-header">GUI</div>
+      <div class="tl-body">CustomTkinter で全画面実装。初回ウィザード。keyring 統合。進捗ビュー。</div>
+    </div>
+    <div class="tl-arrow">→</div>
+
+    <div class="tl-item">
+      <div class="tl-header">配布</div>
+      <div class="tl-body">PyInstaller で EXE 化。Chromium 同梱。クリーン環境でのテスト。配布物約350MB。</div>
+    </div>
+    <div class="tl-arrow">→</div>
+
+    <div class="tl-item">
+      <div class="tl-header">拡張</div>
+      <div class="tl-body">価格設定UI。記事ライブラリ。エラーリカバリ強化。Mac対応（要望次第）。</div>
+    </div>
+
+  </div>
+</section>
+
+<!-- ═══════════ 11. モバイル進化の布石 ═══════════ -->
+<section>
+  <h2 class="section-title">モバイル（iOS/Android）への進化の布石</h2>
+  <div class="summary-grid">
+    <div class="summary-card">
+      <div class="icon">📱</div>
+      <h3>今回はPC版のみ</h3>
+      <p>Playwright はモバイル非対応のため、PC版 EXE の完成を最優先。モバイル対応は Phase 2 として明示的に後回し。</p>
+    </div>
+    <div class="summary-card">
+      <div class="icon">🔌</div>
+      <h3>執筆コアと投稿を分離</h3>
+      <p>Phase A〜C（ヒアリング・生成）は note.com 非依存の設計にする。<code style="font-size:11px;background:var(--bg2);padding:1px 4px;border-radius:3px;">note_client/</code> のみが Playwright 依存。</p>
+    </div>
+    <div class="summary-card">
+      <div class="icon">🔄</div>
+      <h3>将来のAPI化に備えた設計</h3>
+      <p>各 phase を CLI/API として呼び出せる関数シグネチャで設計。モバイル向けには執筆コアをWebAPI化、投稿は手動コピペ or note公式APIに切替の選択肢を残す。</p>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════ 12. 未確定事項 ═══════════ -->
+<section>
+  <h2 class="section-title">実装着手前に決めたい事項</h2>
+  <div class="security-grid">
+    <div class="security-item">
+      <div class="sec-icon">📄</div>
+      <div class="sec-content">
+        <h4>ナレッジドキュメントの同梱方法</h4>
+        <p>EXEにナレッジ全文を同梱するか、プロンプトに「焼き込む」か。同梱するとEXEを解凍した際にナレッジ全文が見えてしまう。焼き込むと更新が手間になる。</p>
+      </div>
+    </div>
+    <div class="security-item">
+      <div class="sec-icon">🔍</div>
+      <div class="sec-content">
+        <h4>note 有料境界線 UI の事前検証</h4>
+        <p>note の編集画面で「ここから有料」ボタンのPlaywright操作が可能かどうかを、実際のブラウザで手動確認が必要。note の UI 変更頻度が高いため要事前検証。</p>
+      </div>
+    </div>
+    <div class="security-item" style="grid-column: span 2;">
+      <div class="sec-icon">💡</div>
+      <div class="sec-content">
+        <h4>ヒアリングのモデル選択（ハイブリッド戦略の是非）</h4>
+        <p>会話全体を低コストの Claude Haiku で進め、Phase 移行の判定だけ Claude Sonnet で行うハイブリッド戦略の検討。コスト削減効果はあるが、実装の複雑度が上がる。</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+</div><!-- /.page -->
+
+<footer style="margin-top:60px;padding:20px 48px;background:var(--bg3);border-top:1px solid var(--border);font-size:12px;color:var(--text-muted);">
+  note 自動投稿ツール ─ 設計図 &nbsp;|&nbsp; 参照: <code>docs/ARCHITECTURE.md</code> &nbsp;|&nbsp; ナレッジ原典: <code>knowledge/note AIツール 統合ナレッジドキュメント.md</code>
+</footer>
+
+</body>
+</html>

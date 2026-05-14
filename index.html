@@ -1,1505 +1,1097 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="ja">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>note 自動投稿ツール — 全体設計図（Web版）</title>
-<style>
-  :root {
-    --bg: #FAF7F2;
-    --bg2: #F3EDE3;
-    --bg3: #EDE4D6;
-    --border: #D4C4A8;
-    --text: #3A2E22;
-    --text-light: #6B5744;
-    --text-muted: #9C8570;
-    --brown: #7A4F2B;
-    --brown-dark: #5C3A1E;
-    --phase-a: #F0E6D3;
-    --phase-a-border: #C4905A;
-    --phase-a-head: #8B5E34;
-    --phase-b: #E3EDE3;
-    --phase-b-border: #6A9E6A;
-    --phase-b-head: #3D6E3D;
-    --phase-c: #E3E3ED;
-    --phase-c-border: #7A7AAE;
-    --phase-c-head: #4A4A8A;
-    --note: #EDE3E3;
-    --note-border: #B07070;
-    --note-head: #7A3A3A;
-    --browser: #E8F0F5;
-    --browser-border: #6A95B0;
-    --browser-head: #3A6080;
-    --server: #F5E8EA;
-    --server-border: #B07585;
-    --server-head: #7A3548;
-    --shadow: 0 2px 8px rgba(90,60,30,0.10);
-    --shadow-sm: 0 1px 4px rgba(90,60,30,0.08);
-  }
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>note記事作成・投稿支援アプリ 設計レビュー資料</title>
+  <style>
+    :root {
+      --bg: #f6f7fb;
+      --paper: #ffffff;
+      --ink: #1f2937;
+      --muted: #667085;
+      --line: #d9dee8;
+      --primary: #2657d8;
+      --primary-soft: #e9efff;
+      --accent: #0f9f7a;
+      --accent-soft: #e6f7f2;
+      --warn: #b45309;
+      --warn-soft: #fff4df;
+      --danger: #b42318;
+      --danger-soft: #fff0ee;
+      --purple: #7c3aed;
+      --purple-soft: #f1eaff;
+      --shadow: 0 18px 48px rgba(31, 41, 55, 0.12);
+      --radius: 18px;
+      --radius-sm: 12px;
+      --max: 1180px;
+    }
 
-  * { box-sizing: border-box; margin: 0; padding: 0; }
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      background: linear-gradient(180deg, #eef3ff 0%, var(--bg) 320px);
+      color: var(--ink);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Hiragino Sans", "Yu Gothic", Meiryo, sans-serif;
+      line-height: 1.75;
+    }
+    a { color: var(--primary); text-decoration: none; }
+    a:hover { text-decoration: underline; }
 
-  body {
-    background: var(--bg);
-    color: var(--text);
-    font-family: 'Hiragino Sans', 'Yu Gothic UI', 'Meiryo', sans-serif;
-    font-size: 15px;
-    line-height: 1.7;
-    padding: 0 0 60px;
-  }
+    .layout {
+      display: grid;
+      grid-template-columns: 270px minmax(0, 1fr);
+      gap: 28px;
+      width: min(var(--max), calc(100% - 40px));
+      margin: 0 auto;
+      padding: 28px 0 64px;
+    }
 
-  /* ────────────── HEADER ────────────── */
-  .site-header {
-    background: var(--brown-dark);
-    color: #FAF0E0;
-    padding: 36px 48px 32px;
-    border-bottom: 4px solid var(--phase-a-border);
-  }
-  .site-header h1 {
-    font-size: 26px;
-    font-weight: 700;
-    letter-spacing: .04em;
-    margin-bottom: 6px;
-  }
-  .site-header .subtitle {
-    font-size: 13px;
-    opacity: .75;
-    letter-spacing: .08em;
-  }
-  .version-pill {
-    display: inline-block;
-    background: var(--phase-a-border);
-    color: #FAF0E0;
-    padding: 2px 10px;
-    border-radius: 12px;
-    font-size: 11px;
-    margin-left: 10px;
-    vertical-align: middle;
-    letter-spacing: .04em;
-  }
-  .header-tags {
-    margin-top: 14px;
-    display: flex;
-    gap: 8px;
-    flex-wrap: wrap;
-  }
-  .tag {
-    background: rgba(255,255,255,.12);
-    border: 1px solid rgba(255,255,255,.25);
-    border-radius: 4px;
-    padding: 2px 10px;
-    font-size: 12px;
-    letter-spacing: .04em;
-  }
+    .sidebar {
+      position: sticky;
+      top: 20px;
+      height: calc(100vh - 40px);
+      align-self: start;
+      background: rgba(255,255,255,0.86);
+      border: 1px solid rgba(217, 222, 232, 0.95);
+      border-radius: var(--radius);
+      box-shadow: 0 10px 30px rgba(31, 41, 55, 0.08);
+      padding: 18px;
+      overflow: auto;
+      backdrop-filter: blur(10px);
+    }
+    .sidebar h2 {
+      font-size: 14px;
+      margin: 0 0 12px;
+      letter-spacing: .08em;
+      color: var(--muted);
+      text-transform: uppercase;
+    }
+    .toc { list-style: none; margin: 0; padding: 0; }
+    .toc li { margin: 6px 0; }
+    .toc a {
+      display: block;
+      padding: 8px 10px;
+      border-radius: 10px;
+      color: #344054;
+      font-size: 14px;
+    }
+    .toc a:hover { background: var(--primary-soft); text-decoration: none; }
+    .side-note {
+      margin-top: 18px;
+      padding: 12px;
+      border-radius: 12px;
+      background: #f8fafc;
+      color: var(--muted);
+      font-size: 13px;
+      border: 1px solid #e8ecf3;
+    }
+    .print-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 100%;
+      margin-top: 14px;
+      padding: 10px 12px;
+      border: 0;
+      border-radius: 12px;
+      background: var(--primary);
+      color: white;
+      font-weight: 700;
+      cursor: pointer;
+    }
 
-  /* ────────────── LAYOUT ────────────── */
-  .page {
-    max-width: 1100px;
-    margin: 0 auto;
-    padding: 0 32px;
-  }
+    main { min-width: 0; }
+    .hero {
+      background: rgba(255,255,255,0.92);
+      border: 1px solid rgba(217, 222, 232, 0.95);
+      border-radius: 28px;
+      padding: 40px;
+      box-shadow: var(--shadow);
+      overflow: hidden;
+      position: relative;
+    }
+    .hero::before {
+      content: "";
+      position: absolute;
+      inset: -120px -140px auto auto;
+      width: 360px;
+      height: 360px;
+      background: radial-gradient(circle, rgba(38,87,216,0.20), rgba(38,87,216,0));
+      pointer-events: none;
+    }
+    .eyebrow {
+      display: inline-block;
+      padding: 6px 12px;
+      border-radius: 999px;
+      background: var(--primary-soft);
+      color: var(--primary);
+      font-weight: 800;
+      font-size: 13px;
+      letter-spacing: .04em;
+    }
+    h1 {
+      margin: 18px 0 8px;
+      font-size: clamp(30px, 4vw, 48px);
+      line-height: 1.18;
+      letter-spacing: -0.03em;
+    }
+    .lead {
+      max-width: 850px;
+      color: #475467;
+      font-size: 18px;
+      margin: 14px 0 0;
+    }
+    .meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 22px;
+    }
+    .chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 7px 11px;
+      border-radius: 999px;
+      background: #f8fafc;
+      border: 1px solid #e7ebf2;
+      font-size: 13px;
+      color: #344054;
+      font-weight: 700;
+    }
 
-  section {
-    margin-top: 48px;
-  }
+    section {
+      margin-top: 26px;
+      background: var(--paper);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      padding: 30px;
+      box-shadow: 0 8px 24px rgba(31, 41, 55, 0.06);
+    }
+    section h2 {
+      margin: 0 0 16px;
+      font-size: 27px;
+      letter-spacing: -0.02em;
+      line-height: 1.3;
+    }
+    h3 {
+      margin: 24px 0 10px;
+      font-size: 19px;
+    }
+    p { margin: 10px 0; }
+    .subtext { color: var(--muted); }
+    .section-intro {
+      color: #475467;
+      font-size: 16px;
+      margin-bottom: 18px;
+    }
 
-  .section-title {
-    font-size: 18px;
-    font-weight: 700;
-    color: var(--brown-dark);
-    border-left: 4px solid var(--phase-a-border);
-    padding-left: 12px;
-    margin-bottom: 24px;
-    letter-spacing: .03em;
-  }
+    .cards {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 16px;
+      margin-top: 18px;
+    }
+    .cards.two { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .cards.four { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+    .card {
+      border: 1px solid #e4e8f0;
+      border-radius: var(--radius-sm);
+      padding: 18px;
+      background: #fff;
+      min-height: 100%;
+    }
+    .card.primary { background: var(--primary-soft); border-color: #c9d7ff; }
+    .card.accent { background: var(--accent-soft); border-color: #c4ecdf; }
+    .card.warn { background: var(--warn-soft); border-color: #ffe1a6; }
+    .card.danger { background: var(--danger-soft); border-color: #ffd1cc; }
+    .card.purple { background: var(--purple-soft); border-color: #dcccff; }
+    .card h3, .card h4 {
+      margin: 0 0 8px;
+      line-height: 1.35;
+    }
+    .card h4 { font-size: 16px; }
+    .card p { margin: 0; color: #475467; }
+    .big-number {
+      width: 36px;
+      height: 36px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 50%;
+      color: white;
+      background: var(--primary);
+      font-weight: 900;
+      margin-bottom: 12px;
+    }
 
-  /* ────────────── SUMMARY CARDS ────────────── */
-  .summary-grid {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 16px;
-  }
-  .summary-card {
-    background: #fff;
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    padding: 20px;
-    box-shadow: var(--shadow-sm);
-  }
-  .summary-card .icon {
-    font-size: 28px;
-    margin-bottom: 8px;
-  }
-  .summary-card h3 {
-    font-size: 14px;
-    font-weight: 700;
-    color: var(--brown-dark);
-    margin-bottom: 6px;
-  }
-  .summary-card p {
-    font-size: 13px;
-    color: var(--text-light);
-    line-height: 1.6;
-  }
+    .diagram-wrap {
+      margin: 22px 0;
+      padding: 18px;
+      background: #fbfcff;
+      border: 1px solid #e7ebf2;
+      border-radius: var(--radius-sm);
+      overflow: auto;
+    }
+    svg { max-width: 100%; height: auto; display: block; }
+    .svg-label { font: 700 16px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; fill: #1f2937; }
+    .svg-small { font: 500 13px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; fill: #475467; }
+    .svg-mono { font: 700 12px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; fill: #344054; }
 
-  /* ────────────── BIG SYSTEM DIAGRAM ────────────── */
-  .system-diagram {
-    background: #fff;
-    border: 1.5px solid var(--border);
-    border-radius: 10px;
-    padding: 28px;
-    box-shadow: var(--shadow);
-  }
-  .browser-box {
-    background: var(--browser);
-    border: 1.5px solid var(--browser-border);
-    border-radius: 10px;
-    padding: 20px;
-    margin-bottom: 14px;
-  }
-  .browser-box .box-title {
-    font-size: 13px;
-    font-weight: 700;
-    color: var(--browser-head);
-    margin-bottom: 14px;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-  }
-  .browser-box .box-title .pill {
-    background: var(--browser-border);
-    color: #fff;
-    font-size: 10px;
-    padding: 2px 8px;
-    border-radius: 10px;
-    letter-spacing: .04em;
-  }
-  .browser-modules {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 8px;
-  }
-  .browser-mod {
-    background: #fff;
-    border: 1px solid var(--browser-border);
-    border-radius: 6px;
-    padding: 10px 12px;
-    font-size: 12px;
-    color: var(--browser-head);
-  }
-  .browser-mod strong { display: block; font-size: 11.5px; margin-bottom: 2px; }
-  .browser-mod span   { font-size: 11px; opacity: .8; }
+    .flow {
+      display: grid;
+      grid-template-columns: repeat(7, minmax(130px, 1fr));
+      gap: 10px;
+      align-items: stretch;
+      margin: 20px 0;
+    }
+    .flow-step {
+      position: relative;
+      padding: 15px 12px;
+      background: #f8fafc;
+      border: 1px solid #e4e8f0;
+      border-radius: 14px;
+      min-height: 118px;
+    }
+    .flow-step:not(:last-child)::after {
+      content: "→";
+      position: absolute;
+      right: -18px;
+      top: 42px;
+      font-size: 20px;
+      color: var(--primary);
+      font-weight: 900;
+      z-index: 2;
+    }
+    .flow-step strong { display: block; margin-bottom: 6px; }
+    .flow-step span { color: var(--muted); font-size: 13px; display: block; line-height: 1.55; }
 
-  .browser-storage {
-    margin-top: 10px;
-    background: #fff;
-    border: 1px dashed var(--browser-border);
-    border-radius: 6px;
-    padding: 10px 14px;
-    font-size: 12px;
-    color: var(--browser-head);
-  }
-  .browser-storage .label { font-weight: 700; }
-  .browser-storage .crossed { color: #B85050; font-weight: 700; }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 16px 0;
+      border: 1px solid #e4e8f0;
+      border-radius: 14px;
+      overflow: hidden;
+      display: table;
+    }
+    th, td {
+      border-bottom: 1px solid #e4e8f0;
+      padding: 12px 14px;
+      text-align: left;
+      vertical-align: top;
+      font-size: 14px;
+    }
+    th { background: #f8fafc; font-weight: 800; color: #344054; }
+    tr:last-child td { border-bottom: 0; }
+    .ok { color: #067647; font-weight: 900; }
+    .partial { color: #b54708; font-weight: 900; }
+    .no { color: #b42318; font-weight: 900; }
 
-  .external-row {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 12px;
-    margin-top: 18px;
-  }
-  .external-box {
-    border-radius: 10px;
-    padding: 16px;
-    box-shadow: var(--shadow-sm);
-  }
-  .ext-anth {
-    background: var(--phase-c);
-    border: 1.5px solid var(--phase-c-border);
-  }
-  .ext-server {
-    background: var(--server);
-    border: 1.5px solid var(--server-border);
-  }
-  .ext-anth .box-title { color: var(--phase-c-head); }
-  .ext-server .box-title { color: var(--server-head); }
-  .external-box .box-title {
-    font-size: 13px;
-    font-weight: 700;
-    margin-bottom: 8px;
-  }
-  .external-box ul {
-    list-style: none;
-    padding: 0;
-    font-size: 12px;
-  }
-  .external-box li {
-    padding: 3px 0 3px 16px;
-    position: relative;
-    line-height: 1.5;
-  }
-  .external-box li::before {
-    content: '•';
-    position: absolute;
-    left: 4px;
-  }
-  .ext-anth li { color: var(--phase-c-head); }
-  .ext-server li { color: var(--server-head); }
+    .callout {
+      display: grid;
+      grid-template-columns: 42px minmax(0, 1fr);
+      gap: 14px;
+      padding: 16px;
+      border-radius: var(--radius-sm);
+      border: 1px solid #d7e2ff;
+      background: var(--primary-soft);
+      margin: 18px 0;
+    }
+    .callout.warn { background: var(--warn-soft); border-color: #ffe1a6; }
+    .callout.danger { background: var(--danger-soft); border-color: #ffd1cc; }
+    .callout.accent { background: var(--accent-soft); border-color: #c4ecdf; }
+    .callout .icon {
+      width: 42px;
+      height: 42px;
+      display: inline-flex;
+      justify-content: center;
+      align-items: center;
+      border-radius: 50%;
+      background: white;
+      font-size: 22px;
+      box-shadow: 0 4px 12px rgba(31, 41, 55, 0.08);
+    }
+    .callout strong { display: block; margin-bottom: 4px; }
+    .callout p { margin: 0; color: #475467; }
 
-  .ext-note {
-    grid-column: span 2;
-    background: var(--note);
-    border: 1.5px solid var(--note-border);
-    border-radius: 10px;
-    padding: 12px 16px;
-    margin-top: 10px;
-    text-align: center;
-    color: var(--note-head);
-    font-size: 13px;
-    font-weight: 700;
-    box-shadow: var(--shadow-sm);
-  }
+    .pill-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 12px;
+    }
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      padding: 5px 10px;
+      border-radius: 999px;
+      background: #f2f4f7;
+      color: #344054;
+      font-size: 13px;
+      font-weight: 700;
+    }
 
-  .arrow-down {
-    text-align: center;
-    color: var(--text-muted);
-    font-size: 20px;
-    margin: 6px 0;
-  }
+    .split-body {
+      display: grid;
+      grid-template-columns: 1fr 68px 1fr;
+      gap: 12px;
+      align-items: stretch;
+      margin: 20px 0;
+    }
+    .body-box {
+      border: 2px solid #d9dee8;
+      border-radius: 16px;
+      background: #fff;
+      padding: 18px;
+      min-height: 130px;
+    }
+    .body-box h4 { margin: 0 0 8px; font-size: 18px; }
+    .paywall {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      color: var(--warn);
+      font-weight: 900;
+    }
+    .paywall .line { width: 4px; height: 118px; border-radius: 999px; background: var(--warn); }
 
-  /* ────────────── MAIN FLOW ────────────── */
-  .main-flow {
-    display: flex;
-    align-items: stretch;
-    gap: 0;
-    overflow-x: auto;
-    padding-bottom: 8px;
-  }
-  .flow-step {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    min-width: 130px;
-  }
-  .flow-box {
-    width: 120px;
-    border-radius: 8px;
-    padding: 12px 8px;
-    text-align: center;
-    box-shadow: var(--shadow-sm);
-    border: 1.5px solid;
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: 6px;
-  }
-  .flow-box .flow-icon { font-size: 20px; }
-  .flow-box .flow-label {
-    font-size: 12px;
-    font-weight: 700;
-    line-height: 1.3;
-  }
-  .flow-box .flow-sub {
-    font-size: 10.5px;
-    opacity: .75;
-    line-height: 1.3;
-  }
-  .flow-arrow {
-    display: flex;
-    align-items: center;
-    padding: 0 4px;
-    font-size: 22px;
-    color: var(--text-muted);
-    align-self: center;
-  }
+    .checklist {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+      margin-top: 14px;
+    }
+    .checkitem {
+      display: flex;
+      gap: 10px;
+      padding: 13px;
+      border-radius: 12px;
+      border: 1px solid #e4e8f0;
+      background: #fff;
+    }
+    .box {
+      width: 20px;
+      height: 20px;
+      border: 2px solid #98a2b3;
+      border-radius: 5px;
+      flex: 0 0 auto;
+      margin-top: 2px;
+      background: #fff;
+    }
+    .checkitem strong { display: block; line-height: 1.45; }
+    .checkitem span { display: block; color: var(--muted); font-size: 13px; line-height: 1.55; margin-top: 2px; }
 
-  .flow-user     { background: var(--bg3);      border-color: var(--brown);           color: var(--brown-dark); }
-  .flow-setup    { background: #FFF8F0;         border-color: #D4A855;                color: #7A5820; }
-  .flow-a        { background: var(--phase-a);  border-color: var(--phase-a-border);  color: var(--phase-a-head); }
-  .flow-b        { background: var(--phase-b);  border-color: var(--phase-b-border);  color: var(--phase-b-head); }
-  .flow-c        { background: var(--phase-c);  border-color: var(--phase-c-border);  color: var(--phase-c-head); }
-  .flow-server   { background: var(--server);   border-color: var(--server-border);   color: var(--server-head); }
-  .flow-note     { background: var(--note);     border-color: var(--note-border);     color: var(--note-head); }
+    .timeline {
+      display: grid;
+      grid-template-columns: repeat(6, minmax(0, 1fr));
+      gap: 12px;
+      margin-top: 16px;
+    }
+    .phase {
+      border: 1px solid #e4e8f0;
+      border-radius: 14px;
+      padding: 14px;
+      background: #fff;
+      position: relative;
+      min-height: 164px;
+    }
+    .phase .tag {
+      display: inline-block;
+      padding: 3px 9px;
+      border-radius: 999px;
+      background: #f2f4f7;
+      font-size: 12px;
+      font-weight: 800;
+      color: #344054;
+      margin-bottom: 8px;
+    }
+    .phase h4 { margin: 0 0 6px; }
+    .phase p { margin: 0; color: var(--muted); font-size: 13px; line-height: 1.55; }
 
-  /* ────────────── PHASES ────────────── */
-  .phases-grid {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 16px;
-  }
-  .phase-card {
-    border-radius: 10px;
-    border: 1.5px solid;
-    overflow: hidden;
-    box-shadow: var(--shadow-sm);
-  }
-  .phase-head {
-    padding: 12px 16px;
-    font-size: 13px;
-    font-weight: 700;
-    letter-spacing: .04em;
-  }
-  .phase-body {
-    padding: 16px;
-    background: #fff;
-    font-size: 13px;
-  }
-  .phase-body ul {
-    padding-left: 0;
-    list-style: none;
-  }
-  .phase-body li {
-    padding: 5px 0 5px 18px;
-    position: relative;
-    color: var(--text-light);
-    border-bottom: 1px dotted var(--border);
-    line-height: 1.5;
-  }
-  .phase-body li:last-child { border-bottom: none; }
-  .phase-body li::before {
-    content: '›';
-    position: absolute;
-    left: 4px;
-    font-weight: 700;
-  }
+    code {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      background: #f2f4f7;
+      padding: 2px 5px;
+      border-radius: 6px;
+      color: #344054;
+    }
+    .footer {
+      margin: 26px 0 0;
+      color: var(--muted);
+      font-size: 13px;
+      text-align: center;
+    }
 
-  .phase-a-card { border-color: var(--phase-a-border); }
-  .phase-a-card .phase-head { background: var(--phase-a); color: var(--phase-a-head); }
-  .phase-a-card li::before { color: var(--phase-a-border); }
+    @media (max-width: 1020px) {
+      .layout { grid-template-columns: 1fr; }
+      .sidebar { position: static; height: auto; }
+      .cards, .cards.two, .cards.four { grid-template-columns: 1fr; }
+      .flow { grid-template-columns: 1fr; }
+      .flow-step:not(:last-child)::after { content: "↓"; right: auto; left: 22px; top: auto; bottom: -25px; }
+      .flow-step { margin-bottom: 12px; }
+      .timeline { grid-template-columns: 1fr; }
+      .checklist { grid-template-columns: 1fr; }
+      .split-body { grid-template-columns: 1fr; }
+      .paywall { flex-direction: row; }
+      .paywall .line { height: 4px; width: 100%; }
+    }
 
-  .phase-b-card { border-color: var(--phase-b-border); }
-  .phase-b-card .phase-head { background: var(--phase-b); color: var(--phase-b-head); }
-  .phase-b-card li::before { color: var(--phase-b-border); }
-
-  .phase-c-card { border-color: var(--phase-c-border); }
-  .phase-c-card .phase-head { background: var(--phase-c); color: var(--phase-c-head); }
-  .phase-c-card li::before { color: var(--phase-c-border); }
-
-  /* ────────────── PHASE C STEPS ────────────── */
-  .phase-c-steps {
-    display: grid;
-    grid-template-columns: repeat(2, 1fr);
-    gap: 12px;
-  }
-  .step-card {
-    background: #fff;
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    padding: 14px 16px;
-    box-shadow: var(--shadow-sm);
-    display: flex;
-    gap: 12px;
-  }
-  .step-num {
-    width: 28px;
-    height: 28px;
-    min-width: 28px;
-    border-radius: 50%;
-    background: var(--phase-c);
-    border: 1.5px solid var(--phase-c-border);
-    color: var(--phase-c-head);
-    font-size: 12px;
-    font-weight: 700;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-  }
-  .step-content h4 {
-    font-size: 13px;
-    font-weight: 700;
-    color: var(--text);
-    margin-bottom: 3px;
-  }
-  .step-content p {
-    font-size: 12px;
-    color: var(--text-light);
-    line-height: 1.5;
-  }
-  .model-tag {
-    display: inline-block;
-    font-size: 10px;
-    padding: 1px 6px;
-    border-radius: 3px;
-    font-weight: 700;
-    margin-top: 4px;
-    margin-right: 4px;
-  }
-  .model-sonnet  { background: #E3E3F8; color: #3A3A8A; border: 1px solid #AAAAD8; }
-  .model-haiku   { background: #E3F0E8; color: #2E5A3A; border: 1px solid #80B890; }
-  .model-dalle   { background: #F0E8F0; color: #5A2E5A; border: 1px solid #B880B8; }
-  .model-search  { background: #F0EAE0; color: #5A4020; border: 1px solid #C0A060; }
-  .model-pw      { background: #F0E8E8; color: #5A2E2E; border: 1px solid #C08080; }
-  .model-browser { background: #E0EBF5; color: #2E4A6E; border: 1px solid #80A0C8; }
-  .model-local   { background: #F0F0F0; color: #555; border: 1px solid #ccc; }
-
-  /* ────────────── AI TABLE ────────────── */
-  .ai-table {
-    width: 100%;
-    border-collapse: collapse;
-    background: #fff;
-    border-radius: 8px;
-    overflow: hidden;
-    box-shadow: var(--shadow-sm);
-    font-size: 13px;
-  }
-  .ai-table th {
-    background: var(--brown-dark);
-    color: #FAF0E0;
-    padding: 10px 14px;
-    text-align: left;
-    font-size: 12px;
-    font-weight: 700;
-    letter-spacing: .06em;
-  }
-  .ai-table td {
-    padding: 10px 14px;
-    border-bottom: 1px solid var(--border);
-    color: var(--text-light);
-    vertical-align: top;
-  }
-  .ai-table tr:last-child td { border-bottom: none; }
-  .ai-table tr:nth-child(even) td { background: var(--bg2); }
-  .ai-table td:first-child { color: var(--text); font-weight: 600; }
-
-  /* ────────────── API KEY SETUP ────────────── */
-  .setup-flow {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 16px;
-  }
-  .setup-card {
-    background: #fff;
-    border: 1.5px solid var(--border);
-    border-radius: 10px;
-    overflow: hidden;
-    box-shadow: var(--shadow-sm);
-  }
-  .setup-head {
-    padding: 14px 18px;
-    color: #FAF0E0;
-    font-weight: 700;
-    font-size: 14px;
-    letter-spacing: .03em;
-  }
-  .setup-head .price {
-    float: right;
-    background: rgba(255,255,255,.2);
-    padding: 2px 8px;
-    border-radius: 10px;
-    font-size: 11px;
-    font-weight: 600;
-  }
-  .setup-anth { background: linear-gradient(135deg, #5B5B95, #4A4A8A); }
-  .setup-oai  { background: linear-gradient(135deg, #6E4E7A, #5A3F66); }
-
-  .setup-body {
-    padding: 16px 18px;
-  }
-  .setup-body ol {
-    padding-left: 20px;
-    font-size: 13px;
-    color: var(--text);
-    line-height: 1.9;
-  }
-  .setup-body ol li {
-    margin-bottom: 2px;
-  }
-  .setup-body .note-line {
-    background: var(--bg2);
-    border-left: 3px solid var(--phase-a-border);
-    padding: 8px 12px;
-    font-size: 12px;
-    color: var(--text-light);
-    margin-top: 10px;
-    border-radius: 3px;
-  }
-
-  /* ────────────── DATA TABLE ────────────── */
-  .data-table {
-    width: 100%;
-    border-collapse: collapse;
-    background: #fff;
-    border-radius: 8px;
-    overflow: hidden;
-    box-shadow: var(--shadow-sm);
-    font-size: 13px;
-  }
-  .data-table th {
-    background: var(--bg3);
-    color: var(--brown-dark);
-    padding: 9px 14px;
-    text-align: left;
-    font-size: 12px;
-    font-weight: 700;
-    letter-spacing: .06em;
-    border-bottom: 1.5px solid var(--border);
-  }
-  .data-table td {
-    padding: 9px 14px;
-    border-bottom: 1px solid var(--border);
-    color: var(--text-light);
-    vertical-align: middle;
-  }
-  .data-table tr:last-child td { border-bottom: none; }
-  .data-table tr:nth-child(even) td { background: var(--bg2); }
-  .data-table td:first-child { color: var(--text); font-weight: 600; }
-
-  .badge-ok   { background: #DCEAD8; color: #2E5A2E; border: 1px solid #80B080; padding: 2px 8px; border-radius: 10px; font-size: 11px; font-weight: 700; }
-  .badge-warn { background: #F5E8D0; color: #7A5010; border: 1px solid #C8A865; padding: 2px 8px; border-radius: 10px; font-size: 11px; font-weight: 700; }
-  .badge-no   { background: #F5DCDC; color: #7A2E2E; border: 1px solid #C88080; padding: 2px 8px; border-radius: 10px; font-size: 11px; font-weight: 700; }
-
-  /* ────────────── SECURITY ────────────── */
-  .security-grid {
-    display: grid;
-    grid-template-columns: repeat(2, 1fr);
-    gap: 14px;
-  }
-  .security-item {
-    background: #fff;
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    padding: 16px;
-    display: flex;
-    gap: 12px;
-    box-shadow: var(--shadow-sm);
-  }
-  .sec-icon {
-    font-size: 24px;
-    min-width: 32px;
-  }
-  .sec-content h4 {
-    font-size: 13px;
-    font-weight: 700;
-    color: var(--text);
-    margin-bottom: 4px;
-  }
-  .sec-content p {
-    font-size: 12.5px;
-    color: var(--text-light);
-    line-height: 1.55;
-  }
-
-  /* ────────────── TIMELINE ────────────── */
-  .timeline {
-    display: flex;
-    gap: 0;
-    overflow-x: auto;
-    padding-bottom: 8px;
-  }
-  .tl-item {
-    flex: 1;
-    min-width: 130px;
-    position: relative;
-  }
-  .tl-header {
-    background: var(--bg3);
-    border: 1.5px solid var(--border);
-    border-radius: 6px 6px 0 0;
-    padding: 8px 12px;
-    font-size: 12px;
-    font-weight: 700;
-    color: var(--brown-dark);
-    text-align: center;
-  }
-  .tl-item.active .tl-header {
-    background: var(--brown-dark);
-    border-color: var(--brown-dark);
-    color: #FAF0E0;
-  }
-  .tl-body {
-    background: #fff;
-    border: 1.5px solid var(--border);
-    border-top: none;
-    border-radius: 0 0 6px 6px;
-    padding: 10px 12px;
-    font-size: 12px;
-    color: var(--text-light);
-    line-height: 1.55;
-    height: calc(100% - 36px);
-  }
-  .tl-arrow {
-    display: flex;
-    align-items: flex-start;
-    padding-top: 18px;
-    padding-left: 4px;
-    padding-right: 4px;
-    font-size: 18px;
-    color: var(--text-muted);
-    min-width: 24px;
-    flex-shrink: 0;
-  }
-
-  /* ────────────── KNOWLEDGE MAP ────────────── */
-  .knowledge-table {
-    width: 100%;
-    border-collapse: collapse;
-    background: #fff;
-    border-radius: 8px;
-    overflow: hidden;
-    box-shadow: var(--shadow-sm);
-    font-size: 13px;
-  }
-  .knowledge-table th {
-    background: var(--bg3);
-    color: var(--brown-dark);
-    padding: 9px 14px;
-    text-align: left;
-    font-size: 12px;
-    font-weight: 700;
-    letter-spacing: .06em;
-    border-bottom: 1.5px solid var(--border);
-  }
-  .knowledge-table td {
-    padding: 9px 14px;
-    border-bottom: 1px solid var(--border);
-    color: var(--text-light);
-    vertical-align: middle;
-  }
-  .knowledge-table tr:last-child td { border-bottom: none; }
-  .knowledge-table tr:nth-child(even) td { background: var(--bg2); }
-  .knowledge-table td:first-child {
-    color: var(--text);
-    font-weight: 600;
-    white-space: nowrap;
-  }
-  .code {
-    font-family: 'Consolas', monospace;
-    font-size: 11.5px;
-    background: var(--bg2);
-    padding: 2px 6px;
-    border-radius: 3px;
-    color: var(--phase-c-head);
-  }
-
-  /* ────────────── PLATFORM ────────────── */
-  .platform-grid {
-    display: grid;
-    grid-template-columns: repeat(5, 1fr);
-    gap: 10px;
-  }
-  .platform-card {
-    background: #fff;
-    border: 1.5px solid var(--phase-b-border);
-    border-radius: 8px;
-    padding: 16px 8px;
-    text-align: center;
-    box-shadow: var(--shadow-sm);
-  }
-  .platform-card .icon {
-    font-size: 30px;
-    margin-bottom: 8px;
-  }
-  .platform-card .name {
-    font-size: 12px;
-    font-weight: 700;
-    color: var(--text);
-  }
-  .platform-card .check {
-    color: var(--phase-b-head);
-    font-size: 18px;
-    margin-top: 6px;
-    display: block;
-  }
-
-  /* ────────────── NOTE ────────────── */
-  .notice {
-    background: #FFFAF0;
-    border: 1.5px solid #D4B868;
-    border-radius: 8px;
-    padding: 14px 18px;
-    font-size: 13px;
-    color: #5C4010;
-    margin-top: 20px;
-  }
-  .notice strong { color: #7A5010; }
-
-  /* ────────────── RESPONSIVE ────────────── */
-  @media (max-width: 800px) {
-    .summary-grid { grid-template-columns: 1fr; }
-    .phases-grid  { grid-template-columns: 1fr; }
-    .phase-c-steps { grid-template-columns: 1fr; }
-    .security-grid { grid-template-columns: 1fr; }
-    .setup-flow { grid-template-columns: 1fr; }
-    .platform-grid { grid-template-columns: repeat(3, 1fr); }
-    .external-row { grid-template-columns: 1fr; }
-    .ext-note { grid-column: span 1; }
-    .browser-modules { grid-template-columns: 1fr; }
-    .main-flow { flex-direction: column; align-items: flex-start; }
-    .flow-arrow { transform: rotate(90deg); padding: 4px 0; }
-  }
-</style>
+    @media print {
+      body { background: white; color: black; }
+      .layout { display: block; width: 100%; padding: 0; }
+      .sidebar { display: none; }
+      .hero, section { box-shadow: none; border-color: #bbb; break-inside: avoid; }
+      section { page-break-inside: avoid; margin-top: 18px; }
+      a { color: black; text-decoration: none; }
+      .print-btn { display: none; }
+      .flow { grid-template-columns: repeat(4, 1fr); }
+      .timeline { grid-template-columns: repeat(3, 1fr); }
+    }
+  </style>
 </head>
 <body>
+  <div class="layout">
+    <aside class="sidebar" aria-label="目次">
+      <h2>Contents</h2>
+      <ol class="toc">
+        <li><a href="#summary">1. まず押さえる全体像</a></li>
+        <li><a href="#architecture">2. システム構成</a></li>
+        <li><a href="#workflow">3. 利用の流れ</a></li>
+        <li><a href="#modes">4. 記事作成モード</a></li>
+        <li><a href="#gemini">5. Gemini API設計</a></li>
+        <li><a href="#platform">6. OS・デバイス対応方針</a></li>
+        <li><a href="#posting">7. note投稿支援</a></li>
+        <li><a href="#paid">8. 有料記事の安全設計</a></li>
+        <li><a href="#security">9. セキュリティ境界</a></li>
+        <li><a href="#data">10. データ保存</a></li>
+        <li><a href="#roadmap">11. 開発ロードマップ</a></li>
+        <li><a href="#review">12. レビュー観点</a></li>
+      </ol>
+      <div class="side-note">
+        詳細仕様書 v2.0 の内容を、設計レビュー用に要約・図解化した資料です。
+      </div>
+      <button class="print-btn" onclick="window.print()">印刷 / PDF保存</button>
+    </aside>
 
-<!-- ═══════════ HEADER ═══════════ -->
-<header class="site-header">
-  <div class="page">
-    <h1>note 自動投稿ツール — 全体設計図 <span class="version-pill">Web版</span></h1>
-    <p class="subtitle">Architecture Overview / 開発者・編集チーム向けレビュー資料</p>
-    <div class="header-tags">
-      <span class="tag">Webアプリ（URLアクセスのみ）</span>
-      <span class="tag">Next.js + TypeScript</span>
-      <span class="tag">Claude API (Anthropic)</span>
-      <span class="tag">DALL-E 3 (OpenAI)</span>
-      <span class="tag">Playwright（投稿サーバー）</span>
-      <span class="tag">Windows / Mac / iOS / Android 全対応</span>
-    </div>
+    <main>
+      <header class="hero">
+        <span class="eyebrow">設計レビュー資料</span>
+        <h1>note記事作成・投稿支援アプリ<br />仕様解説</h1>
+        <p class="lead">
+          本アプリは、note向けの記事作成、Gemini APIによる文章支援、アイキャッチ生成、投稿前チェック、note投稿画面への入力補助を、ユーザーのローカル環境中心で安全に提供する制作支援ツールです。
+        </p>
+        <div class="meta">
+          <span class="chip">対象仕様: 要件定義・詳細仕様書 v2.0</span>
+          <span class="chip">MVP: Windows版</span>
+          <span class="chip">方式: ローカルWebアプリ型</span>
+          <span class="chip">AI: Gemini API / ユーザー自身のキー</span>
+          <span class="chip">投稿: 公開直前停止</span>
+        </div>
+      </header>
+
+      <section id="summary">
+        <h2>1. まず押さえる全体像</h2>
+        <p class="section-intro">
+          このアプリは「記事を自動で公開するツール」ではありません。記事作成から投稿画面への入力までを支援し、最後の公開判断はユーザー確認に戻す設計です。
+        </p>
+        <div class="cards">
+          <div class="card primary">
+            <h3>作る</h3>
+            <p>テンプレート、本文インポート、Gemini APIを使って、note記事の下書き・見出し・タイトル・タグ・有料記事構成を作成します。</p>
+          </div>
+          <div class="card accent">
+            <h3>整える</h3>
+            <p>アイキャッチ生成、無料部分と有料部分の分割、価格・返金設定、販売導線チェック、読みやすさ確認を行います。</p>
+          </div>
+          <div class="card warn">
+            <h3>投稿を補助する</h3>
+            <p>ユーザーPC上のブラウザを操作してnote投稿画面へ入力します。標準では公開ボタンの手前で必ず停止します。</p>
+          </div>
+        </div>
+
+        <div class="callout accent">
+          <div class="icon">✓</div>
+          <div>
+            <strong>設計の中心方針</strong>
+            <p>記事本文、noteログイン状態、Gemini APIキーをできる限りユーザーのPC内に置き、クラウド側に秘密情報を集めない構成にします。</p>
+          </div>
+        </div>
+
+        <table>
+          <thead>
+            <tr><th>項目</th><th>方針</th><th>理由</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>初期提供形態</td><td>Windows向けローカルWebアプリ型デスクトップアプリ</td><td>note投稿支援、APIキー管理、記事保存をローカルで安全に扱いやすい。</td></tr>
+            <tr><td>Gemini API</td><td>ユーザー自身のAPIキーを利用</td><td>運営者側のAPI費用・レート制限・キー漏洩リスクを抑える。</td></tr>
+            <tr><td>note投稿</td><td>ローカルPlaywrightで投稿画面へ入力</td><td>公式公開APIに依存せず、ユーザーのブラウザ操作を補助する。</td></tr>
+            <tr><td>公開操作</td><td>標準では自動で押さない</td><td>誤投稿、価格設定ミス、有料ラインミスを防ぐ。</td></tr>
+            <tr><td>モバイル対応</td><td>まずは記事作成・コピー補助中心</td><td>iOS/AndroidではPCと同じブラウザ自動操作が難しいため。</td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section id="architecture">
+        <h2>2. システム構成</h2>
+        <p class="section-intro">
+          exe化したPythonアプリがユーザーPC上でローカルサーバーを起動し、ユーザーは普段のブラウザから画面を操作します。外部に出る通信は主にGemini APIとnoteサイトです。
+        </p>
+
+        <div class="diagram-wrap" aria-label="システム構成図">
+          <svg viewBox="0 0 1180 650" role="img" aria-labelledby="archTitle archDesc">
+            <title id="archTitle">ローカルWebアプリ型デスクトップ構成</title>
+            <desc id="archDesc">ユーザーPC内にローカルサーバー、DB、資格情報ストア、Playwrightブラウザを置き、外部のGemini APIとnote.comに接続する構成。</desc>
+            <defs>
+              <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+                <path d="M 0 0 L 10 5 L 0 10 z" fill="#2657d8" />
+              </marker>
+              <filter id="softShadow" x="-20%" y="-20%" width="140%" height="140%">
+                <feDropShadow dx="0" dy="8" stdDeviation="8" flood-color="#1f2937" flood-opacity="0.12" />
+              </filter>
+            </defs>
+
+            <rect x="24" y="34" width="790" height="570" rx="28" fill="#ffffff" stroke="#d9dee8" stroke-width="2" filter="url(#softShadow)" />
+            <text x="54" y="72" class="svg-label">ユーザーPC内（ローカル）</text>
+            <text x="54" y="96" class="svg-small">記事本文・APIキー・noteセッションを可能な限りPC内に保持</text>
+
+            <rect x="70" y="130" width="210" height="92" rx="16" fill="#e9efff" stroke="#c9d7ff" stroke-width="2" />
+            <text x="95" y="165" class="svg-label">ブラウザUI</text>
+            <text x="95" y="190" class="svg-mono">127.0.0.1:random</text>
+
+            <rect x="360" y="130" width="230" height="92" rx="16" fill="#f1eaff" stroke="#dcccff" stroke-width="2" />
+            <text x="390" y="165" class="svg-label">ローカルAPI</text>
+            <text x="390" y="190" class="svg-small">FastAPI / Python</text>
+
+            <rect x="70" y="302" width="210" height="92" rx="16" fill="#e6f7f2" stroke="#c4ecdf" stroke-width="2" />
+            <text x="95" y="337" class="svg-label">SQLite / files</text>
+            <text x="95" y="362" class="svg-small">記事・画像・ログ</text>
+
+            <rect x="360" y="302" width="230" height="92" rx="16" fill="#fff4df" stroke="#ffe1a6" stroke-width="2" />
+            <text x="390" y="337" class="svg-label">OS資格情報ストア</text>
+            <text x="390" y="362" class="svg-small">Gemini APIキー等</text>
+
+            <rect x="70" y="466" width="210" height="92" rx="16" fill="#ffffff" stroke="#d9dee8" stroke-width="2" />
+            <text x="95" y="501" class="svg-label">Pillow</text>
+            <text x="95" y="526" class="svg-small">アイキャッチ生成</text>
+
+            <rect x="360" y="466" width="230" height="92" rx="16" fill="#ffffff" stroke="#d9dee8" stroke-width="2" />
+            <text x="390" y="501" class="svg-label">Playwright</text>
+            <text x="390" y="526" class="svg-small">note投稿画面を操作</text>
+
+            <rect x="870" y="118" width="250" height="120" rx="18" fill="#ffffff" stroke="#d9dee8" stroke-width="2" filter="url(#softShadow)" />
+            <text x="910" y="162" class="svg-label">Gemini API</text>
+            <text x="910" y="188" class="svg-small">文章生成・リライト</text>
+            <text x="910" y="212" class="svg-small">ユーザー自身のキーで利用</text>
+
+            <rect x="870" y="398" width="250" height="120" rx="18" fill="#ffffff" stroke="#d9dee8" stroke-width="2" filter="url(#softShadow)" />
+            <text x="930" y="442" class="svg-label">note.com</text>
+            <text x="910" y="468" class="svg-small">投稿画面へ入力</text>
+            <text x="910" y="492" class="svg-small">公開直前で停止</text>
+
+            <line x1="280" y1="176" x2="360" y2="176" stroke="#2657d8" stroke-width="3" marker-end="url(#arrow)" />
+            <line x1="475" y1="222" x2="475" y2="302" stroke="#2657d8" stroke-width="3" marker-end="url(#arrow)" />
+            <line x1="360" y1="348" x2="280" y2="348" stroke="#2657d8" stroke-width="3" marker-end="url(#arrow)" />
+            <line x1="475" y1="394" x2="475" y2="466" stroke="#2657d8" stroke-width="3" marker-end="url(#arrow)" />
+            <line x1="360" y1="512" x2="280" y2="512" stroke="#2657d8" stroke-width="3" marker-end="url(#arrow)" />
+
+            <path d="M 590 176 C 680 176, 765 176, 870 176" fill="none" stroke="#2657d8" stroke-width="3" marker-end="url(#arrow)" />
+            <text x="676" y="158" class="svg-small">必要時のみ通信</text>
+            <path d="M 590 512 C 690 512, 760 458, 870 458" fill="none" stroke="#2657d8" stroke-width="3" marker-end="url(#arrow)" />
+            <text x="675" y="514" class="svg-small">ユーザーPCから操作</text>
+
+            <rect x="632" y="288" width="145" height="76" rx="14" fill="#fff0ee" stroke="#ffd1cc" stroke-width="2" />
+            <text x="656" y="318" class="svg-label">クラウドに</text>
+            <text x="650" y="344" class="svg-small">秘密情報を集約しない</text>
+          </svg>
+        </div>
+
+        <div class="cards three">
+          <div class="card">
+            <h3>ローカルサーバー</h3>
+            <p>exe起動時に <code>127.0.0.1</code> のランダムポートで起動します。外部ネットワークから接続できる <code>0.0.0.0</code> では起動しません。</p>
+          </div>
+          <div class="card">
+            <h3>ブラウザUI</h3>
+            <p>見た目と操作感はWebアプリに近くします。将来のPWA・モバイル展開に備え、UIと処理を分離します。</p>
+          </div>
+          <div class="card">
+            <h3>投稿支援</h3>
+            <p>note操作はユーザーPC上のPlaywrightブラウザで実行します。noteのログイン状態をクラウドに預けない方針です。</p>
+          </div>
+        </div>
+      </section>
+
+      <section id="workflow">
+        <h2>3. 利用の流れ</h2>
+        <p class="section-intro">
+          画面はウィザード形式を基本とし、1画面1目的で進めます。投稿前には必ず確認画面を挟みます。
+        </p>
+        <div class="flow">
+          <div class="flow-step"><strong>1. 記事タイプ</strong><span>無料記事 / 有料記事を選択。目的と読者も入力。</span></div>
+          <div class="flow-step"><strong>2. 作成モード</strong><span>A: テンプレート、B: インポート、C: Geminiを選択。</span></div>
+          <div class="flow-step"><strong>3. 本文作成</strong><span>タイトル、見出し、本文、タグ案を作成・編集。</span></div>
+          <div class="flow-step"><strong>4. 有料設計</strong><span>有料ライン、価格、返金設定、購入価値を確認。</span></div>
+          <div class="flow-step"><strong>5. 画像生成</strong><span>Pillowでテンプレート型アイキャッチを作成。</span></div>
+          <div class="flow-step"><strong>6. 投稿前チェック</strong><span>不足項目、誤設定、公開リスクを確認。</span></div>
+          <div class="flow-step"><strong>7. note入力</strong><span>Playwrightで投稿画面へ入力し、公開直前で停止。</span></div>
+        </div>
+
+        <div class="callout warn">
+          <div class="icon">!</div>
+          <div>
+            <strong>標準では公開しない</strong>
+            <p>アプリは投稿画面への入力を支援しますが、MVPでは公開ボタンを自動で押しません。公開判断はユーザー確認に戻します。</p>
+          </div>
+        </div>
+      </section>
+
+      <section id="modes">
+        <h2>4. 記事作成モード</h2>
+        <p class="section-intro">
+          APIなしでも使える基本機能を持ち、必要なユーザーだけGemini APIを使える構成にします。
+        </p>
+        <div class="cards">
+          <div class="card primary">
+            <div class="big-number">A</div>
+            <h3>テンプレート生成</h3>
+            <p>入力項目をもとに、定型テンプレートで記事の骨子と本文を生成します。API不要で無料利用できます。</p>
+            <div class="pill-row"><span class="pill">API不要</span><span class="pill">MVP必須</span><span class="pill">安定</span></div>
+          </div>
+          <div class="card accent">
+            <div class="big-number" style="background:#0f9f7a">B</div>
+            <h3>本文インポート</h3>
+            <p>既存の文章、メモ、Markdownなどを取り込み、note向けに整えます。既に原稿があるユーザー向けです。</p>
+            <div class="pill-row"><span class="pill">API不要</span><span class="pill">編集中心</span><span class="pill">既存原稿</span></div>
+          </div>
+          <div class="card purple">
+            <div class="big-number" style="background:#7c3aed">C</div>
+            <h3>Gemini API連携</h3>
+            <p>ユーザー自身のGemini APIキーを使い、文章生成、リライト、タイトル案、有料ライン提案などを行います。</p>
+            <div class="pill-row"><span class="pill">任意</span><span class="pill">ユーザーAPIキー</span><span class="pill">モデル自動切替</span></div>
+          </div>
+        </div>
+
+        <table>
+          <thead>
+            <tr><th>モード</th><th>主な用途</th><th>API費用</th><th>位置づけ</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>Aモード</td><td>短時間で記事のたたき台を作る</td><td>不要</td><td>基本機能</td></tr>
+            <tr><td>Bモード</td><td>既存原稿をnote向けに整える</td><td>不要</td><td>基本機能</td></tr>
+            <tr><td>Cモード</td><td>AIで生成・改善・販売設計を強化する</td><td>ユーザー負担</td><td>任意オプション</td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section id="gemini">
+        <h2>5. Gemini API設計</h2>
+        <p class="section-intro">
+          CモードではGemini APIを前提にします。アプリ側のModel Routerが、処理内容・文字量・有料記事かどうか・ユーザー設定を見てモデルを選びます。
+        </p>
+
+        <div class="diagram-wrap" aria-label="Geminiモデル自動切替図">
+          <svg viewBox="0 0 1180 520" role="img" aria-labelledby="gemTitle gemDesc">
+            <title id="gemTitle">Gemini Model Router</title>
+            <desc id="gemDesc">タスク種別と難易度に応じて、軽量・標準・高品質モデルを切り替える。</desc>
+            <defs>
+              <marker id="arrow2" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+                <path d="M 0 0 L 10 5 L 0 10 z" fill="#7c3aed" />
+              </marker>
+            </defs>
+
+            <rect x="40" y="60" width="250" height="88" rx="16" fill="#e9efff" stroke="#c9d7ff" stroke-width="2" />
+            <text x="72" y="94" class="svg-label">軽い処理</text>
+            <text x="72" y="120" class="svg-small">タイトル案・タグ案・要約</text>
+
+            <rect x="40" y="206" width="250" height="88" rx="16" fill="#e6f7f2" stroke="#c4ecdf" stroke-width="2" />
+            <text x="72" y="240" class="svg-label">標準処理</text>
+            <text x="72" y="266" class="svg-small">本文生成・リライト・構成案</text>
+
+            <rect x="40" y="352" width="250" height="88" rx="16" fill="#fff4df" stroke="#ffe1a6" stroke-width="2" />
+            <text x="72" y="386" class="svg-label">重い処理</text>
+            <text x="72" y="412" class="svg-small">有料記事設計・長文整合性</text>
+
+            <rect x="440" y="168" width="300" height="176" rx="24" fill="#f1eaff" stroke="#dcccff" stroke-width="3" />
+            <text x="502" y="214" class="svg-label">Model Router</text>
+            <text x="482" y="246" class="svg-small">処理内容、文字量、有料記事フラグ、</text>
+            <text x="498" y="270" class="svg-small">ユーザー設定、エラー状況で判断</text>
+            <text x="492" y="306" class="svg-mono">speed / quality / auto / manual</text>
+
+            <rect x="890" y="60" width="250" height="88" rx="16" fill="#ffffff" stroke="#d9dee8" stroke-width="2" />
+            <text x="925" y="94" class="svg-label">Flash-Lite系</text>
+            <text x="925" y="120" class="svg-small">速度・低コスト重視</text>
+
+            <rect x="890" y="206" width="250" height="88" rx="16" fill="#ffffff" stroke="#d9dee8" stroke-width="2" />
+            <text x="925" y="240" class="svg-label">Flash系</text>
+            <text x="925" y="266" class="svg-small">本文生成の標準候補</text>
+
+            <rect x="890" y="352" width="250" height="88" rx="16" fill="#ffffff" stroke="#d9dee8" stroke-width="2" />
+            <text x="925" y="386" class="svg-label">Pro系</text>
+            <text x="925" y="412" class="svg-small">高度・長文・販売設計</text>
+
+            <path d="M 290 104 C 350 104, 380 196, 440 212" fill="none" stroke="#7c3aed" stroke-width="3" marker-end="url(#arrow2)" />
+            <path d="M 290 250 C 354 250, 382 250, 440 250" fill="none" stroke="#7c3aed" stroke-width="3" marker-end="url(#arrow2)" />
+            <path d="M 290 396 C 350 396, 380 314, 440 300" fill="none" stroke="#7c3aed" stroke-width="3" marker-end="url(#arrow2)" />
+
+            <path d="M 740 212 C 800 196, 830 104, 890 104" fill="none" stroke="#7c3aed" stroke-width="3" marker-end="url(#arrow2)" />
+            <path d="M 740 250 C 804 250, 832 250, 890 250" fill="none" stroke="#7c3aed" stroke-width="3" marker-end="url(#arrow2)" />
+            <path d="M 740 300 C 800 314, 830 396, 890 396" fill="none" stroke="#7c3aed" stroke-width="3" marker-end="url(#arrow2)" />
+
+            <text x="392" y="64" class="svg-small">モデル名は設定ファイルで差し替え可能</text>
+            <text x="392" y="86" class="svg-small">例: gemini-2.5-flash-lite / gemini-2.5-flash / gemini-2.5-pro</text>
+          </svg>
+        </div>
+
+        <div class="cards two">
+          <div class="card purple">
+            <h3>ユーザー向け表示</h3>
+            <p>画面上では「速度優先」「品質優先」「無料枠優先」「自動」「手動固定」のような分かりやすい選択肢を出します。生のモデル名は詳細設定に置きます。</p>
+          </div>
+          <div class="card warn">
+            <h3>エラー時の扱い</h3>
+            <p>レート制限や利用上限に当たった場合は、軽量モデルへの再試行、処理分割、テンプレート生成への戻しを行います。</p>
+          </div>
+        </div>
+
+        <table>
+          <thead>
+            <tr><th>処理</th><th>難易度</th><th>初期モデル候補</th><th>補足</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>タイトル案・タグ案</td><td>低</td><td>Flash-Lite系</td><td>高速・低コストで十分な処理。</td></tr>
+            <tr><td>要約・軽いリライト</td><td>低〜中</td><td>Flash-Lite系 / Flash系</td><td>文字量で切り替える。</td></tr>
+            <tr><td>本文生成・構成案</td><td>中</td><td>Flash系</td><td>Cモードの標準候補。</td></tr>
+            <tr><td>有料記事の販売設計</td><td>高</td><td>Flash系 / Pro系</td><td>価格、無料部分、有料部分の納得感を見る。</td></tr>
+            <tr><td>長文整合性チェック</td><td>高</td><td>Pro系</td><td>長文・複雑な確認向け。</td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section id="platform">
+        <h2>6. OS・デバイス対応方針</h2>
+        <p class="section-intro">
+          すべてのOSで完全に同じ機能を出すのではなく、機能を層に分けます。記事作成は広く展開し、note投稿の自動入力はデスクトップ中心にします。
+        </p>
+
+        <div class="diagram-wrap" aria-label="プラットフォーム対応方針図">
+          <svg viewBox="0 0 1180 480" role="img" aria-labelledby="platformTitle platformDesc">
+            <title id="platformTitle">プラットフォーム戦略</title>
+            <desc id="platformDesc">記事作成機能は全環境へ、投稿支援はデスクトップへ、モバイルは投稿補助へ分ける。</desc>
+            <rect x="40" y="40" width="1100" height="90" rx="20" fill="#e6f7f2" stroke="#c4ecdf" stroke-width="2" />
+            <text x="82" y="78" class="svg-label">共通記事作成機能</text>
+            <text x="82" y="106" class="svg-small">記事作成・編集・Gemini・アイキャッチ・スコアリング・エクスポート</text>
+            <text x="850" y="92" class="svg-label">全プラットフォーム展開候補</text>
+
+            <rect x="40" y="180" width="520" height="210" rx="24" fill="#e9efff" stroke="#c9d7ff" stroke-width="2" />
+            <text x="86" y="224" class="svg-label">デスクトップ版</text>
+            <text x="86" y="252" class="svg-small">Windows / macOS / Linux</text>
+            <text x="86" y="296" class="svg-label">フル機能</text>
+            <text x="86" y="324" class="svg-small">ローカルFastAPI + SQLite + Keyring + Playwright</text>
+            <text x="86" y="352" class="svg-small">note投稿画面への入力補助、公開直前停止まで対応</text>
+
+            <rect x="620" y="180" width="520" height="210" rx="24" fill="#fff4df" stroke="#ffe1a6" stroke-width="2" />
+            <text x="666" y="224" class="svg-label">Web / PWA / モバイル版</text>
+            <text x="666" y="252" class="svg-small">Web / iOS / Android</text>
+            <text x="666" y="296" class="svg-label">作成・補助中心</text>
+            <text x="666" y="324" class="svg-small">記事作成、Gemini、画像保存、コピー補助、note起動</text>
+            <text x="666" y="352" class="svg-small">完全自動入力は初期必須要件にしない</text>
+          </svg>
+        </div>
+
+        <table>
+          <thead>
+            <tr><th>機能</th><th>Windows</th><th>macOS</th><th>Linux</th><th>Web/PWA</th><th>iOS/Android</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>記事作成・編集</td><td class="ok">◎</td><td class="ok">◎</td><td class="ok">◎</td><td class="ok">◎</td><td class="ok">◎</td></tr>
+            <tr><td>Gemini API連携</td><td class="ok">◎</td><td class="ok">◎</td><td class="ok">◎</td><td class="partial">○</td><td class="partial">○</td></tr>
+            <tr><td>アイキャッチ生成</td><td class="ok">◎</td><td class="ok">◎</td><td class="ok">◎</td><td class="partial">○</td><td class="partial">○</td></tr>
+            <tr><td>note投稿画面への自動入力</td><td class="ok">◎</td><td class="ok">◎</td><td class="partial">○</td><td class="partial">△</td><td class="partial">△</td></tr>
+            <tr><td>公開直前停止</td><td class="ok">◎</td><td class="ok">◎</td><td class="partial">○</td><td class="partial">△</td><td class="partial">△</td></tr>
+            <tr><td>完全自動公開</td><td class="no">非推奨</td><td class="no">非推奨</td><td class="no">非推奨</td><td class="no">非推奨</td><td class="no">非推奨</td></tr>
+          </tbody>
+        </table>
+
+        <div class="callout">
+          <div class="icon">i</div>
+          <div>
+            <strong>モバイル版の位置づけ</strong>
+            <p>iOS/Androidでは、まず「記事作成・投稿用コピー補助・画像保存・note起動」を価値にします。PC版と同じ自動投稿体験を初期目標にしません。</p>
+          </div>
+        </div>
+      </section>
+
+      <section id="posting">
+        <h2>7. note投稿支援</h2>
+        <p class="section-intro">
+          投稿支援は、ユーザーPC上で起動したブラウザをPlaywrightで操作する方式です。noteの非公式APIに直接リクエストする実装は行いません。
+        </p>
+
+        <div class="cards two">
+          <div class="card accent">
+            <h3>アプリが行うこと</h3>
+            <p>投稿画面を開き、タイトル、本文、アイキャッチ、タグ、無料/有料記事設定、価格、返金設定、有料ラインの入力を補助します。</p>
+          </div>
+          <div class="card danger">
+            <h3>標準では行わないこと</h3>
+            <p>公開ボタンの自動クリック、note非公式APIの直接利用、クラウド上でのnoteセッション保管は行いません。</p>
+          </div>
+        </div>
+
+        <div class="diagram-wrap" aria-label="note投稿支援の流れ">
+          <svg viewBox="0 0 1180 330" role="img" aria-labelledby="postTitle postDesc">
+            <title id="postTitle">note投稿支援フロー</title>
+            <desc id="postDesc">ユーザー確認後、ローカルPlaywrightがnote投稿画面に入力し、公開直前で停止する。</desc>
+            <defs>
+              <marker id="arrow3" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+                <path d="M 0 0 L 10 5 L 0 10 z" fill="#2657d8" />
+              </marker>
+            </defs>
+            <rect x="34" y="104" width="152" height="106" rx="16" fill="#e9efff" stroke="#c9d7ff" stroke-width="2" />
+            <text x="66" y="142" class="svg-label">投稿前</text>
+            <text x="60" y="168" class="svg-small">チェック</text>
+            <text x="54" y="192" class="svg-small">不足・誤設定確認</text>
+
+            <rect x="230" y="104" width="152" height="106" rx="16" fill="#ffffff" stroke="#d9dee8" stroke-width="2" />
+            <text x="262" y="142" class="svg-label">note</text>
+            <text x="258" y="168" class="svg-small">投稿画面</text>
+            <text x="254" y="192" class="svg-small">ローカルで開く</text>
+
+            <rect x="426" y="104" width="152" height="106" rx="16" fill="#ffffff" stroke="#d9dee8" stroke-width="2" />
+            <text x="460" y="142" class="svg-label">本文</text>
+            <text x="456" y="168" class="svg-small">入力補助</text>
+            <text x="450" y="192" class="svg-small">タイトル・本文</text>
+
+            <rect x="622" y="104" width="152" height="106" rx="16" fill="#ffffff" stroke="#d9dee8" stroke-width="2" />
+            <text x="652" y="142" class="svg-label">画像・タグ</text>
+            <text x="656" y="168" class="svg-small">アップロード</text>
+            <text x="658" y="192" class="svg-small">タグ入力</text>
+
+            <rect x="818" y="104" width="152" height="106" rx="16" fill="#fff4df" stroke="#ffe1a6" stroke-width="2" />
+            <text x="850" y="142" class="svg-label">有料設定</text>
+            <text x="852" y="168" class="svg-small">価格・ライン</text>
+            <text x="856" y="192" class="svg-small">返金設定</text>
+
+            <rect x="1014" y="104" width="132" height="106" rx="16" fill="#fff0ee" stroke="#ffd1cc" stroke-width="2" />
+            <text x="1035" y="142" class="svg-label">停止</text>
+            <text x="1032" y="168" class="svg-small">公開直前</text>
+            <text x="1032" y="192" class="svg-small">最終確認</text>
+
+            <line x1="186" y1="157" x2="230" y2="157" stroke="#2657d8" stroke-width="3" marker-end="url(#arrow3)" />
+            <line x1="382" y1="157" x2="426" y2="157" stroke="#2657d8" stroke-width="3" marker-end="url(#arrow3)" />
+            <line x1="578" y1="157" x2="622" y2="157" stroke="#2657d8" stroke-width="3" marker-end="url(#arrow3)" />
+            <line x1="774" y1="157" x2="818" y2="157" stroke="#2657d8" stroke-width="3" marker-end="url(#arrow3)" />
+            <line x1="970" y1="157" x2="1014" y2="157" stroke="#2657d8" stroke-width="3" marker-end="url(#arrow3)" />
+
+            <text x="376" y="270" class="svg-label">ユーザーの目の前で動くブラウザ</text>
+            <text x="376" y="298" class="svg-small">途中で止まった場合も、ユーザーが手動で続けられる設計にする</text>
+          </svg>
+        </div>
+      </section>
+
+      <section id="paid">
+        <h2>8. 有料記事の安全設計</h2>
+        <p class="section-intro">
+          有料記事では、無料部分・有料部分・有料ライン・価格・返金設定を明確に扱います。誤投稿防止のため、有料記事では確認を強めます。
+        </p>
+
+        <div class="split-body" aria-label="有料ラインの概念図">
+          <div class="body-box">
+            <h4>無料部分</h4>
+            <p>読者が購入前に読める範囲。問題提起、得られる価値、信頼材料、本文の一部を配置します。</p>
+          </div>
+          <div class="paywall">
+            <span>有料ライン</span>
+            <div class="line"></div>
+          </div>
+          <div class="body-box">
+            <h4>有料部分</h4>
+            <p>購入後に読める範囲。具体的な手順、テンプレート、事例、深い解説などを配置します。</p>
+          </div>
+        </div>
+
+        <div class="cards">
+          <div class="card warn">
+            <h3>境界チェック</h3>
+            <p>有料ラインは段落間にのみ配置します。無料部分と有料部分の境界が曖昧な状態では投稿に進めません。</p>
+          </div>
+          <div class="card warn">
+            <h3>価格チェック</h3>
+            <p>価格が未設定、異常値、意図と違う値の場合は警告します。投稿前画面で再確認します。</p>
+          </div>
+          <div class="card warn">
+            <h3>返金設定チェック</h3>
+            <p>返金可否の設定を明示し、確認漏れがないようにします。設定内容は投稿前に表示します。</p>
+          </div>
+        </div>
+
+        <div class="callout danger">
+          <div class="icon">!</div>
+          <div>
+            <strong>有料本文の扱い</strong>
+            <p>有料部分の全文はログに出しません。エラー発生時も、必要最小限の情報だけを記録します。</p>
+          </div>
+        </div>
+      </section>
+
+      <section id="security">
+        <h2>9. セキュリティ境界</h2>
+        <p class="section-intro">
+          このアプリでは、秘密情報をできる限りローカルに閉じ、ログに出さず、クラウドに集めないことを重視します。
+        </p>
+
+        <div class="cards two">
+          <div class="card accent">
+            <h3>守るもの</h3>
+            <p>Gemini APIキー、noteログイン状態、Cookie、記事本文、有料本文、アイキャッチ画像、投稿履歴、エラースクリーンショット。</p>
+          </div>
+          <div class="card danger">
+            <h3>やってはいけないこと</h3>
+            <p>APIキーの平文保存、ログ出力、クラウドへのnoteセッション保存、外部から見えるローカルサーバー起動、公開ボタンの無確認クリック。</p>
+          </div>
+        </div>
+
+        <table>
+          <thead>
+            <tr><th>対象</th><th>保存先・扱い</th><th>注意点</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>Gemini APIキー</td><td>OS資格情報ストア</td><td>DB、ログ、スクリーンショットに出さない。</td></tr>
+            <tr><td>noteログイン状態</td><td>ローカルPlaywrightプロファイル</td><td>クラウド保存しない。削除機能を用意する。</td></tr>
+            <tr><td>記事本文</td><td>SQLite / ローカルファイル</td><td>保存先を明示。バックアップ・削除を用意する。</td></tr>
+            <tr><td>有料本文</td><td>ローカル保存</td><td>ログ出力・エラー送信・全文表示の扱いを制限する。</td></tr>
+            <tr><td>ローカルサーバー</td><td><code>127.0.0.1</code> のみ</td><td><code>0.0.0.0</code> で起動しない。起動ごとのトークンを使う。</td></tr>
+          </tbody>
+        </table>
+
+        <div class="checklist">
+          <div class="checkitem"><div class="box"></div><div><strong>ローカルサーバーは127.0.0.1のみ</strong><span>同じLAN上の他端末から触れないようにする。</span></div></div>
+          <div class="checkitem"><div class="box"></div><div><strong>起動ごとの認証トークン</strong><span>URLにランダムトークンを付け、不要なアクセスを防ぐ。</span></div></div>
+          <div class="checkitem"><div class="box"></div><div><strong>APIキーをログに出さない</strong><span>例外ログ、通信ログ、画面キャプチャにも含めない。</span></div></div>
+          <div class="checkitem"><div class="box"></div><div><strong>有料本文全文をログに出さない</strong><span>エラー調査は記事ID、ステップ、短い要約程度に留める。</span></div></div>
+          <div class="checkitem"><div class="box"></div><div><strong>公開操作はユーザー確認</strong><span>公開直前停止を標準仕様にする。</span></div></div>
+          <div class="checkitem"><div class="box"></div><div><strong>削除・リセット導線</strong><span>認証状態、スクリーンショット、ログ、記事データの削除機能を用意する。</span></div></div>
+        </div>
+      </section>
+
+      <section id="data">
+        <h2>10. データ保存</h2>
+        <p class="section-intro">
+          アプリの基本データはローカルSQLiteとローカルファイルに保存します。将来クラウド同期を追加する場合も、noteセッションや秘密情報は同期対象にしません。
+        </p>
+
+        <div class="diagram-wrap" aria-label="データ保存構成図">
+          <svg viewBox="0 0 1180 480" role="img" aria-labelledby="dataTitle dataDesc">
+            <title id="dataTitle">ローカルデータ構成</title>
+            <desc id="dataDesc">SQLiteテーブルと記事フォルダの保存対象を示す。</desc>
+            <rect x="54" y="44" width="500" height="360" rx="24" fill="#e6f7f2" stroke="#c4ecdf" stroke-width="2" />
+            <text x="92" y="88" class="svg-label">SQLite</text>
+            <text x="92" y="116" class="svg-small">検索・履歴・設定を管理</text>
+            <rect x="94" y="150" width="170" height="52" rx="12" fill="#ffffff" stroke="#d9dee8" stroke-width="2" />
+            <text x="124" y="183" class="svg-mono">articles</text>
+            <rect x="300" y="150" width="190" height="52" rx="12" fill="#ffffff" stroke="#d9dee8" stroke-width="2" />
+            <text x="326" y="183" class="svg-mono">article_versions</text>
+            <rect x="94" y="230" width="170" height="52" rx="12" fill="#ffffff" stroke="#d9dee8" stroke-width="2" />
+            <text x="124" y="263" class="svg-mono">publish_logs</text>
+            <rect x="300" y="230" width="190" height="52" rx="12" fill="#ffffff" stroke="#d9dee8" stroke-width="2" />
+            <text x="332" y="263" class="svg-mono">app_settings</text>
+            <rect x="94" y="310" width="170" height="52" rx="12" fill="#ffffff" stroke="#d9dee8" stroke-width="2" />
+            <text x="130" y="343" class="svg-mono">accounts</text>
+
+            <rect x="626" y="44" width="500" height="360" rx="24" fill="#e9efff" stroke="#c9d7ff" stroke-width="2" />
+            <text x="664" y="88" class="svg-label">ローカルファイル</text>
+            <text x="664" y="116" class="svg-small">本文・画像・スクリーンショットを保存</text>
+            <rect x="666" y="150" width="400" height="54" rx="12" fill="#ffffff" stroke="#d9dee8" stroke-width="2" />
+            <text x="694" y="184" class="svg-mono">articles/{article_id}/article.md</text>
+            <rect x="666" y="228" width="400" height="54" rx="12" fill="#ffffff" stroke="#d9dee8" stroke-width="2" />
+            <text x="694" y="262" class="svg-mono">cover/cover.png</text>
+            <rect x="666" y="306" width="400" height="54" rx="12" fill="#ffffff" stroke="#d9dee8" stroke-width="2" />
+            <text x="694" y="340" class="svg-mono">logs/screenshots/*.png</text>
+          </svg>
+        </div>
+
+        <div class="callout">
+          <div class="icon">i</div>
+          <div>
+            <strong>将来のクラウド同期</strong>
+            <p>同期対象にするのは、テンプレート、下書き、設定の一部、ライセンス情報などに限定します。Gemini APIキーやnoteセッションは同期対象外にします。</p>
+          </div>
+        </div>
+      </section>
+
+      <section id="roadmap">
+        <h2>11. 開発ロードマップ</h2>
+        <p class="section-intro">
+          最初から全OS・全機能を狙わず、価値検証しやすいWindows MVPから始め、macOS、Linux、Web/PWA、モバイルへ段階展開します。
+        </p>
+
+        <div class="timeline">
+          <div class="phase"><span class="tag">Phase 1</span><h4>Windows MVP</h4><p>ローカルWeb UI、A/B/Cモード、Gemini、画像生成、note入力、公開直前停止。</p></div>
+          <div class="phase"><span class="tag">Phase 2</span><h4>macOS対応</h4><p>.app化、Keychain、Apple Silicon、署名・公証、Playwright動作確認。</p></div>
+          <div class="phase"><span class="tag">Phase 3</span><h4>Linux対応</h4><p>AppImage/deb等、依存関係チェック、上級者向け配布。</p></div>
+          <div class="phase"><span class="tag">Phase 4</span><h4>Web / PWA</h4><p>記事作成、Gemini、アイキャッチ、コピー補助、軽量利用。</p></div>
+          <div class="phase"><span class="tag">Phase 5</span><h4>iOS / Android</h4><p>記事作成、下書き管理、画像保存、note起動、投稿用コピー補助。</p></div>
+          <div class="phase"><span class="tag">Phase 6</span><h4>投稿補助高度化</h4><p>ブラウザ拡張、Safari拡張、WebView投稿補助などを慎重に検討。</p></div>
+        </div>
+
+        <div class="callout accent">
+          <div class="icon">✓</div>
+          <div>
+            <strong>最初に作るべき縦切り</strong>
+            <p>記事を1本作る → アイキャッチを作る → 投稿前チェックを通す → note投稿画面へ入力する → 公開直前で止まる、という一連の流れを最優先で完成させます。</p>
+          </div>
+        </div>
+      </section>
+
+      <section id="review">
+        <h2>12. レビュー観点</h2>
+        <p class="section-intro">
+          設計レビューでは、以下の判断が合意できているかを確認します。ここが固まると、実装のブレが小さくなります。
+        </p>
+
+        <div class="checklist">
+          <div class="checkitem"><div class="box"></div><div><strong>MVPはWindows版で開始する</strong><span>macOS/Linux/Web/モバイルは段階展開にする。</span></div></div>
+          <div class="checkitem"><div class="box"></div><div><strong>ローカルWebアプリ型を採用する</strong><span>exeがローカルサーバーを起動し、ブラウザUIで操作する。</span></div></div>
+          <div class="checkitem"><div class="box"></div><div><strong>Gemini APIはユーザー自身のキーを使う</strong><span>開発者のAPIキーを同梱しない。</span></div></div>
+          <div class="checkitem"><div class="box"></div><div><strong>Geminiモデルは自動切替にする</strong><span>処理難易度とユーザー設定に応じてModel Routerが選ぶ。</span></div></div>
+          <div class="checkitem"><div class="box"></div><div><strong>note投稿は公開直前で停止する</strong><span>標準では公開ボタンを自動クリックしない。</span></div></div>
+          <div class="checkitem"><div class="box"></div><div><strong>note非公式APIを直接使わない</strong><span>ユーザーPC上のブラウザ操作補助として実装する。</span></div></div>
+          <div class="checkitem"><div class="box"></div><div><strong>有料記事は確認を強める</strong><span>有料ライン、価格、返金設定を投稿前に必ず確認する。</span></div></div>
+          <div class="checkitem"><div class="box"></div><div><strong>モバイル版は作成・補助中心にする</strong><span>iOS/Androidでの完全自動投稿を初期必須要件にしない。</span></div></div>
+        </div>
+
+        <h3>実装前に確定したいこと</h3>
+        <table>
+          <thead>
+            <tr><th>確認事項</th><th>推奨判断</th><th>理由</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>最初の配布対象</td><td>Windows 10/11</td><td>開発・検証・利用者想定の観点でMVPを絞る。</td></tr>
+            <tr><td>UI技術</td><td>ローカルWeb UI</td><td>将来のWeb/PWA/モバイル展開に資産を流用しやすい。</td></tr>
+            <tr><td>AI機能</td><td>Gemini API Cモード</td><td>無料枠を使える可能性があり、ユーザー負担方式にしやすい。</td></tr>
+            <tr><td>投稿支援の範囲</td><td>入力補助 + 公開直前停止</td><td>誤投稿と運用リスクを抑える。</td></tr>
+            <tr><td>データ保存</td><td>ローカルSQLite + ローカルファイル</td><td>記事本文と秘密情報をクラウドに集めない。</td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section id="glossary">
+        <h2>補足: 用語ミニ解説</h2>
+        <div class="cards two">
+          <div class="card"><h3>ローカルWebアプリ型</h3><p>アプリ自体はPCで動きますが、画面はブラウザで表示する方式です。Webアプリのように操作でき、データはPC内に置きやすい構成です。</p></div>
+          <div class="card"><h3>Playwright</h3><p>ブラウザ操作を自動化する仕組みです。このアプリではnote投稿画面への入力補助に使います。</p></div>
+          <div class="card"><h3>OS資格情報ストア</h3><p>Windows Credential Manager、macOS Keychainなど、OSが用意する秘密情報保存の仕組みです。</p></div>
+          <div class="card"><h3>Model Router</h3><p>AIに依頼する内容の難しさに応じて、軽量モデル・標準モデル・高品質モデルを自動で選ぶアプリ内の部品です。</p></div>
+        </div>
+      </section>
+
+      <p class="footer">note記事作成・投稿支援アプリ 設計レビュー資料 / 要件定義・詳細仕様書 v2.0 ベース</p>
+    </main>
   </div>
-</header>
-
-<div class="page">
-
-<!-- ═══════════ 1. このツールでできること ═══════════ -->
-<section>
-  <h2 class="section-title">このツールでできること</h2>
-  <div class="summary-grid">
-    <div class="summary-card">
-      <div class="icon">🌐</div>
-      <h3>インストール不要</h3>
-      <p>URLにアクセスするだけで利用開始。PC（Windows/Mac）・スマホ（iOS/Android）すべてのブラウザで動く。</p>
-    </div>
-    <div class="summary-card">
-      <div class="icon">✍️</div>
-      <h3>記事を全自動執筆</h3>
-      <p>ヒアリングからジャンル選定・タイトル採点・本文（10,000字以上）・アイキャッチ画像まで一気通貫で生成する。</p>
-    </div>
-    <div class="summary-card">
-      <div class="icon">📤</div>
-      <h3>note へ自動投稿</h3>
-      <p>サーバー上でブラウザを自動操作してタイトル・本文・アイキャッチ・価格を設定。デフォルトは下書き保存で安全。</p>
-    </div>
-  </div>
-</section>
-
-<!-- ═══════════ 2. システム全体図 ═══════════ -->
-<section>
-  <h2 class="section-title">システム全体図 ─ 情報がどこを通るか</h2>
-  <div class="system-diagram">
-
-    <div class="browser-box">
-      <div class="box-title">
-        <span>🌐 ユーザーのブラウザ（PC / スマホ問わず）</span>
-        <span class="pill">すべての記事生成はここで完結</span>
-      </div>
-      <div class="browser-modules">
-        <div class="browser-mod"><strong>Web フロントエンド</strong><span>セットアップ画面 / チャットUI / 進捗画面 / プレビュー</span></div>
-        <div class="browser-mod"><strong>ブラウザ内ロジック</strong><span>Phase A / B / C のすべてをブラウザ内で処理</span></div>
-        <div class="browser-mod"><strong>AI クライアント</strong><span>Anthropic / OpenAI へ <b>直接</b> リクエスト送信</span></div>
-      </div>
-      <div class="browser-storage">
-        <span class="label">ブラウザストレージ:</span>
-        sessionStorage（APIキー・タブを閉じると消える）／
-        localStorage（会話履歴・記事・カバレッジマップ・任意保存）／
-        <span class="crossed">note ID/PW は一切保存しない</span>
-      </div>
-    </div>
-
-    <div class="arrow-down">↓ HTTPS リクエスト</div>
-
-    <div class="external-row">
-      <div class="external-box ext-anth">
-        <div class="box-title">🤖 Anthropic API（Claude）</div>
-        <ul>
-          <li>ヒアリング対話 (Haiku 4.5)</li>
-          <li>タイトル採点・本文生成 (Sonnet 4.6)</li>
-          <li>web_search でリサーチ</li>
-          <li><b>APIキーはブラウザから直接送信。我々のサーバーは経由しない。</b></li>
-        </ul>
-      </div>
-      <div class="external-box ext-anth" style="background: var(--phase-b); border-color: var(--phase-b-border);">
-        <div class="box-title" style="color: var(--phase-b-head);">🎨 OpenAI API（DALL-E 3）</div>
-        <ul style="color: var(--phase-b-head) !important;">
-          <li>アイキャッチ画像生成</li>
-          <li>8ステップ自動判断プロンプト</li>
-          <li>1枚あたり約 $0.04（約6円）</li>
-          <li style="color: var(--phase-b-head) !important;"><b>こちらもブラウザから直接送信。我々のサーバーは経由しない。</b></li>
-        </ul>
-      </div>
-    </div>
-
-    <div class="arrow-down">↓ 投稿するときだけ</div>
-
-    <div class="external-row" style="display: block;">
-      <div class="external-box ext-server">
-        <div class="box-title">🛠 我々のサーバー ─ note 投稿サービスのみ（最小限）</div>
-        <ul>
-          <li>FastAPI + Playwright で構築。Render または Fly.io にデプロイ</li>
-          <li>ブラウザから「記事本文 + 画像 + note ID/PW」を受信</li>
-          <li>メモリ上でPlaywrightブラウザを起動し note.com にログイン → 投稿 → 即破棄</li>
-          <li><b>認証情報はDB・ディスクに一切書き込まない。プロセスメモリのみで処理。</b></li>
-          <li>処理ログにも認証情報は記録しない（自動マスキング）</li>
-        </ul>
-      </div>
-    </div>
-
-    <div class="arrow-down">↓</div>
-
-    <div class="ext-note">📝 note.com（ユーザーのアカウントに下書き保存 or 公開）</div>
-
-  </div>
-</section>
-
-<!-- ═══════════ 3. 全体の流れ ═══════════ -->
-<section>
-  <h2 class="section-title">全体の流れ</h2>
-  <div class="main-flow">
-
-    <div class="flow-step">
-      <div class="flow-box flow-user">
-        <div class="flow-icon">🌐</div>
-        <div class="flow-label">URLアクセス</div>
-        <div class="flow-sub">ブラウザで開く<br>インストール不要</div>
-      </div>
-    </div>
-    <div class="flow-arrow">→</div>
-
-    <div class="flow-step">
-      <div class="flow-box flow-setup">
-        <div class="flow-icon">🔑</div>
-        <div class="flow-label">APIキー入力</div>
-        <div class="flow-sub">未取得ならガイド表示<br>取得後にキーを入力</div>
-      </div>
-    </div>
-    <div class="flow-arrow">→</div>
-
-    <div class="flow-step">
-      <div class="flow-box flow-a">
-        <div class="flow-icon">🎙</div>
-        <div class="flow-label">Phase A</div>
-        <div class="flow-sub">ヒアリング対話<br>6項目が揃うまで</div>
-      </div>
-    </div>
-    <div class="flow-arrow">→</div>
-
-    <div class="flow-step">
-      <div class="flow-box flow-b">
-        <div class="flow-icon">🗂</div>
-        <div class="flow-label">Phase B</div>
-        <div class="flow-sub">ジャンル確定<br>ペルソナ生成</div>
-      </div>
-    </div>
-    <div class="flow-arrow">→</div>
-
-    <div class="flow-step">
-      <div class="flow-box flow-c">
-        <div class="flow-icon">📝</div>
-        <div class="flow-label">Phase C</div>
-        <div class="flow-sub">記事＋画像を<br>自動生成</div>
-      </div>
-    </div>
-    <div class="flow-arrow">→</div>
-
-    <div class="flow-step">
-      <div class="flow-box flow-server">
-        <div class="flow-icon">🛠</div>
-        <div class="flow-label">投稿サーバー</div>
-        <div class="flow-sub">note認証情報を<br>一瞬だけ受信</div>
-      </div>
-    </div>
-    <div class="flow-arrow">→</div>
-
-    <div class="flow-step">
-      <div class="flow-box flow-note">
-        <div class="flow-icon">📤</div>
-        <div class="flow-label">note 投稿</div>
-        <div class="flow-sub">下書き保存<br>または公開</div>
-      </div>
-    </div>
-
-  </div>
-
-  <div class="notice">
-    <strong>2回目以降の起動:</strong> ブラウザの localStorage に未完了プロジェクトが残っている場合は「前回の続きから始めますか？」と確認。YES を選ぶとヒアリングをスキップして生成の続きから再開できる。全10区画を使い切ったプロジェクトは AI が新しい10区画を自動追加し、被りなしで無限に生成を継続できる。
-  </div>
-</section>
-
-<!-- ═══════════ 4. APIキー取得フロー ═══════════ -->
-<section>
-  <h2 class="section-title">APIキー取得フロー ─ ユーザーの初期セットアップ</h2>
-
-  <div class="notice" style="margin-top: 0; margin-bottom: 16px;">
-    <strong>方針:</strong> APIキーの取得（アカウント作成・クレカ登録）はユーザー自身が行う。アプリは「取得手順のガイド」と「入力欄」を提供する。ガイド画面にはスクリーンショットを同梱し、Anthropic / OpenAI の管理画面の操作場所を視覚的に示す。
-  </div>
-
-  <div class="setup-flow">
-
-    <div class="setup-card">
-      <div class="setup-head setup-anth">
-        🤖 Anthropic（Claude）<span class="price">10記事で約200〜350円</span>
-      </div>
-      <div class="setup-body">
-        <ol>
-          <li>console.anthropic.com にアクセス</li>
-          <li>アカウント作成（クレジットカード登録）</li>
-          <li>「API Keys」→「Create Key」</li>
-          <li><code style="background:var(--bg2);padding:1px 6px;border-radius:3px;font-size:11.5px;">sk-ant-...</code> で始まるキーをコピー</li>
-          <li>アプリの入力欄に貼り付け</li>
-        </ol>
-        <div class="note-line">画面で操作箇所をスクショ付きでガイドする。</div>
-      </div>
-    </div>
-
-    <div class="setup-card">
-      <div class="setup-head setup-oai">
-        🎨 OpenAI（DALL-E 3）<span class="price">10記事で約100〜150円</span>
-      </div>
-      <div class="setup-body">
-        <ol>
-          <li>platform.openai.com にアクセス</li>
-          <li>アカウント作成（クレジットカード登録）</li>
-          <li>「API Keys」→「Create new secret key」</li>
-          <li><code style="background:var(--bg2);padding:1px 6px;border-radius:3px;font-size:11.5px;">sk-...</code> で始まるキーをコピー</li>
-          <li><b>クレジット残高を最低 $5 チャージ</b>（DALL-E 3 利用に必要）</li>
-          <li>アプリの入力欄に貼り付け</li>
-        </ol>
-        <div class="note-line">売れる記事にはアイキャッチが必須のため、OpenAI キーも必須としている。</div>
-      </div>
-    </div>
-
-  </div>
-
-  <div class="notice" style="background: #FFF0E8; border-color: #D49868;">
-    <strong>費用に関する明示:</strong> セットアップ画面の冒頭で「このツール自体は無料ですが、AI の利用料金は別途かかります」「10記事の生成でおよそ <strong>300〜500円</strong> が Anthropic と OpenAI に対して発生します」を必ず提示する。あとからの「課金されると思っていなかった」トラブルを防止する。
-  </div>
-</section>
-
-<!-- ═══════════ 5. 各フェーズの詳細 ═══════════ -->
-<section>
-  <h2 class="section-title">各フェーズの詳細</h2>
-  <div class="phases-grid">
-
-    <div class="phase-card phase-a-card">
-      <div class="phase-head">Phase A ─ ヒアリング対話　（Claude Haiku 4.5）</div>
-      <div class="phase-body">
-        <ul>
-          <li>起動セリフ固定（変更不可）。AIキャラクターは「横から共有する仲間」のスタンス</li>
-          <li>1回1問ルール厳守。複数質問は禁止</li>
-          <li>相手の言葉を「オウム返し＋意味の言語化」してから次へ進む</li>
-          <li>直接聞かず体験を掘る迂回質問で6項目を引き出す</li>
-          <li>①発信ジャンル ②ターゲット読者 ③深い悩み ④最悪の未来 ⑤解決策 ⑥最高の未来 が揃ったら自動で Phase B へ</li>
-          <li>会話ログは localStorage に保存（途中再開可能）</li>
-        </ul>
-      </div>
-    </div>
-
-    <div class="phase-card phase-b-card">
-      <div class="phase-head">Phase B ─ ジャンル・ペルソナ確定　（Claude Sonnet 4.6）</div>
-      <div class="phase-body">
-        <ul>
-          <li>会話ログから100ジャンルリストへ自動マッピング → 最適ジャンルを1つ自動確定</li>
-          <li>ペルソナ8項目（名前・年齢・職業・悩み・購入理由 等）を1回のAPIコールで出力</li>
-          <li>ジャンルを10区画に分割（カバレッジマップ生成）</li>
-          <li>有料記事1本 + 無料記事9本の割り当てを自動決定</li>
-          <li>ユーザーの承認なしにそのまま Phase C へ移行（確認不要・自動進行）</li>
-          <li>結果は画面に表示する</li>
-        </ul>
-      </div>
-    </div>
-
-    <div class="phase-card phase-c-card">
-      <div class="phase-head">Phase C ─ 10記事の連続生成　（全自動）</div>
-      <div class="phase-body">
-        <ul>
-          <li>各記事について 7ステップを順番に実行（次のセクション参照）</li>
-          <li>有料記事: 10,000字以上。無料記事: 3,000〜5,000字</li>
-          <li>品質チェックで NG なら最大2回まで自動リトライ</li>
-          <li>1本生成完了ごとに localStorage の coverage_map.json を更新</li>
-          <li>10本完成で完了通知</li>
-          <li>途中でブラウザを閉じても、次回起動時に続きから再開できる</li>
-        </ul>
-      </div>
-    </div>
-
-  </div>
-</section>
-
-<!-- ═══════════ 6. Phase C 7ステップ詳細 ═══════════ -->
-<section>
-  <h2 class="section-title">Phase C ─ 1記事あたりの7ステップ（すべてブラウザ内で実行）</h2>
-  <div class="phase-c-steps">
-
-    <div class="step-card">
-      <div class="step-num">1</div>
-      <div class="step-content">
-        <h4>タイトル10案生成 + 採点 + 自動採用</h4>
-        <p>30文字前後のタイトルを10案生成。ターゲット明確性・クリック強度・内容一致性など5軸で100点満点採点。最高得点を自動採用。</p>
-        <span class="model-tag model-sonnet">Claude Sonnet 4.6</span>
-        <span class="model-tag model-browser">ブラウザ内</span>
-      </div>
-    </div>
-
-    <div class="step-card">
-      <div class="step-num">2</div>
-      <div class="step-content">
-        <h4>リサーチ（web検索で素材収集）</h4>
-        <p>web_search ツールを有効化し、現状・問題点・失敗事例・成功事例・海外研究など8項目の素材をURL付きで収集する。</p>
-        <span class="model-tag model-sonnet">Claude Sonnet 4.6</span>
-        <span class="model-tag model-search">web_search 有効</span>
-        <span class="model-tag model-browser">ブラウザ内</span>
-      </div>
-    </div>
-
-    <div class="step-card">
-      <div class="step-num">3</div>
-      <div class="step-content">
-        <h4>結起承転 構成生成</h4>
-        <p>有料記事: 無料ゾーン（結→起→承→転の渇望を作る）＋「ここから有料」マーカー＋有料ゾーン（具体手順）。無料記事: 結起承転で完結。</p>
-        <span class="model-tag model-sonnet">Claude Sonnet 4.6</span>
-        <span class="model-tag model-browser">ブラウザ内</span>
-      </div>
-    </div>
-
-    <div class="step-card">
-      <div class="step-num">4</div>
-      <div class="step-content">
-        <h4>本文生成</h4>
-        <p>冒頭は読者の心の声を「」で3〜4つ。本文はです・ます調統一、同語尾3連続禁止、感情6:理解4の比率、情景描写を含める。AI語禁止。</p>
-        <span class="model-tag model-sonnet">Claude Sonnet 4.6</span>
-        <span class="model-tag model-browser">ブラウザ内</span>
-      </div>
-    </div>
-
-    <div class="step-card">
-      <div class="step-num">5</div>
-      <div class="step-content">
-        <h4>品質チェック</h4>
-        <p>構成チェック・文体チェック・読者チェック・文字数チェックの4カテゴリ全項目を確認。NGがあれば最大2回まで自動リトライ。</p>
-        <span class="model-tag model-haiku">Claude Haiku 4.5</span>
-        <span class="model-tag model-browser">ブラウザ内</span>
-      </div>
-    </div>
-
-    <div class="step-card">
-      <div class="step-num">6</div>
-      <div class="step-content">
-        <h4>アイキャッチ画像生成（必須）</h4>
-        <p>8ステップ自動判断（タイトル構造分類→人物使用判断→ペルソナ性別年齢参照→色設計）でDALL-E 3用英語プロンプトを自動生成・画像生成。<b>売れる記事には必須のため省略不可。</b></p>
-        <span class="model-tag model-dalle">DALL-E 3 (OpenAI)</span>
-        <span class="model-tag model-browser">ブラウザ内</span>
-      </div>
-    </div>
-
-    <div class="step-card">
-      <div class="step-num">7</div>
-      <div class="step-content">
-        <h4>ブラウザに保存</h4>
-        <p>記事Markdown・画像Base64・カバレッジマップを localStorage に保存。次の記事へ進む。10本完了で完了通知を表示。</p>
-        <span class="model-tag model-local">localStorage</span>
-        <span class="model-tag model-browser">ブラウザ内</span>
-      </div>
-    </div>
-
-    <div class="step-card" style="background: var(--server); border-color: var(--server-border);">
-      <div class="step-num" style="background: var(--server-border); color: #fff; border-color: var(--server-border);">📤</div>
-      <div class="step-content">
-        <h4>note 投稿（ユーザーが「投稿」を押したとき）</h4>
-        <p>ブラウザから記事 + 画像 + note認証情報を投稿サーバーへ送信。サーバー上でPlaywright が note.com を操作。タイトル/本文/タグ/価格/アイキャッチを入力。有料記事は境界線を設定。</p>
-        <span class="model-tag model-pw">Playwright (サーバー)</span>
-        <span class="model-tag" style="background: var(--server); color: var(--server-head); border: 1px solid var(--server-border);">サーバー側で実行</span>
-      </div>
-    </div>
-
-  </div>
-</section>
-
-<!-- ═══════════ 7. AI構成 ═══════════ -->
-<section>
-  <h2 class="section-title">AI 構成とコスト概算</h2>
-  <table class="ai-table">
-    <thead>
-      <tr>
-        <th>工程</th>
-        <th>プロバイダ</th>
-        <th>モデル</th>
-        <th>選択理由</th>
-      </tr>
-    </thead>
-    <tbody>
-      <tr>
-        <td>ヒアリング対話・ジャンルマッピング</td>
-        <td>Anthropic</td>
-        <td><span class="model-tag model-haiku" style="font-size:12px;">Claude Haiku 4.5</span></td>
-        <td>会話制御など軽量タスク。低コスト・高速</td>
-      </tr>
-      <tr>
-        <td>タイトル採点・構成生成</td>
-        <td>Anthropic</td>
-        <td><span class="model-tag model-sonnet" style="font-size:12px;">Claude Sonnet 4.6</span></td>
-        <td>採点ロジックや構造設計に高精度が必要</td>
-      </tr>
-      <tr>
-        <td>リサーチ（web_search付き）</td>
-        <td>Anthropic</td>
-        <td><span class="model-tag model-sonnet" style="font-size:12px;">Claude Sonnet 4.6</span></td>
-        <td>Anthropic 組込の web_search ツールを使用</td>
-      </tr>
-      <tr>
-        <td>本文生成（10,000字以上）</td>
-        <td>Anthropic</td>
-        <td><span class="model-tag model-sonnet" style="font-size:12px;">Claude Sonnet 4.6</span></td>
-        <td>日本語長文・文体ルール遵守に最高品質が必要</td>
-      </tr>
-      <tr>
-        <td>本文品質チェック</td>
-        <td>Anthropic</td>
-        <td><span class="model-tag model-haiku" style="font-size:12px;">Claude Haiku 4.5</span></td>
-        <td>チェックリスト評価は軽量で十分</td>
-      </tr>
-      <tr>
-        <td>アイキャッチ画像生成</td>
-        <td>OpenAI</td>
-        <td><span class="model-tag model-dalle" style="font-size:12px;">DALL-E 3 Standard</span></td>
-        <td>ナレッジ6章のプロンプト設計がDALL-E 3前提</td>
-      </tr>
-    </tbody>
-  </table>
-  <div class="notice">
-    <strong>コスト目安:</strong> 10記事1セットの生成で <strong>300〜500円程度</strong>（ユーザー負担）。ナレッジドキュメントをくり返し参照する部分は <strong>Prompt Caching（5分TTL）</strong> を使いコストを削減。<strong>APIキーはすべてユーザーのブラウザから各プロバイダへ直接送信</strong>。我々のサーバーには届かない。
-  </div>
-</section>
-
-<!-- ═══════════ 8. ナレッジとコードの対応 ═══════════ -->
-<section>
-  <h2 class="section-title">ナレッジドキュメントとコードの対応</h2>
-  <table class="knowledge-table">
-    <thead>
-      <tr>
-        <th>ナレッジ章</th>
-        <th>内容（抜粋）</th>
-        <th>実装ファイル</th>
-      </tr>
-    </thead>
-    <tbody>
-      <tr>
-        <td>1章: 100ジャンルリスト</td>
-        <td>AI・SNS・副業・投資・キャリア・恋愛・美容・教育・メンタル・生活 × 各10テーマ</td>
-        <td><span class="code">phase_b/genre_mapper.ts</span></td>
-      </tr>
-      <tr>
-        <td>2章: タイトル設計・採点</td>
-        <td>10案生成 → 5軸100点採点 → 最高点を自動採用</td>
-        <td><span class="code">phase_c/title.ts</span></td>
-      </tr>
-      <tr>
-        <td>3章: ヒアリング対話フロー</td>
-        <td>起動セリフ・Phase1〜4・6問充足判定・迂回質問</td>
-        <td><span class="code">phase_a/hearing_runner.ts</span><br><span class="code">phase_a/completion_check.ts</span></td>
-      </tr>
-      <tr>
-        <td>3-6: ペルソナ出力形式</td>
-        <td>名前・年齢・職業・家族構成・悩み・購入理由など8項目</td>
-        <td><span class="code">phase_b/persona_builder.ts</span></td>
-      </tr>
-      <tr>
-        <td>3-7: リサーチプロンプト</td>
-        <td>web_search有効化・8項目素材収集・URL必須・文章禁止</td>
-        <td><span class="code">phase_c/research.ts</span></td>
-      </tr>
-      <tr>
-        <td>4章: 結起承転 構成</td>
-        <td>結論先出し → 起（苦労）→ 承（原因）→ 転（解決の糸口）</td>
-        <td><span class="code">phase_c/structure.ts</span></td>
-      </tr>
-      <tr>
-        <td>5章: コピーライティング</td>
-        <td>冒頭の心の声・です・ます調・同語尾3連続禁止・AI語禁止</td>
-        <td><span class="code">phase_c/body.ts</span></td>
-      </tr>
-      <tr>
-        <td>5-7: 品質チェックリスト</td>
-        <td>構成・文体・読者・文字数の4カテゴリを全チェック</td>
-        <td><span class="code">phase_c/quality_check.ts</span></td>
-      </tr>
-      <tr>
-        <td>6章: アイキャッチ生成</td>
-        <td>8ステップ自動判断 → 英語プロンプト生成 → DALL-E 3</td>
-        <td><span class="code">phase_c/thumbnail.ts</span></td>
-      </tr>
-      <tr>
-        <td>7章: 価格設計</td>
-        <td>解決策具体性・購買力・ジャンル相場・希少性の4軸でAI提案</td>
-        <td><span class="code">pricing/price_advisor.ts</span></td>
-      </tr>
-      <tr>
-        <td>8章: 複数記事連続生成</td>
-        <td>10区画カバレッジマップ・JSON状態管理・2回目以降の再開</td>
-        <td><span class="code">phase_b/coverage_map.ts</span><br><span class="code">phase_c/pipeline.ts</span></td>
-      </tr>
-      <tr>
-        <td>note投稿（既存資産）</td>
-        <td>Playwright で note.com を自動操作</td>
-        <td><span class="code">posting-service/app/note_client/post.py</span></td>
-      </tr>
-    </tbody>
-  </table>
-</section>
-
-<!-- ═══════════ 9. データの取り扱い ═══════════ -->
-<section>
-  <h2 class="section-title">データの取り扱い ─ どこに、いつまで残るか</h2>
-  <table class="data-table">
-    <thead>
-      <tr>
-        <th>データ</th>
-        <th>保存場所</th>
-        <th>ライフサイクル</th>
-        <th>サーバー到達</th>
-      </tr>
-    </thead>
-    <tbody>
-      <tr>
-        <td>Anthropic APIキー</td>
-        <td>ブラウザの sessionStorage</td>
-        <td>タブを閉じると消える（任意で永続化）</td>
-        <td><span class="badge-no">なし</span></td>
-      </tr>
-      <tr>
-        <td>OpenAI APIキー</td>
-        <td>ブラウザの sessionStorage</td>
-        <td>タブを閉じると消える（任意で永続化）</td>
-        <td><span class="badge-no">なし</span></td>
-      </tr>
-      <tr>
-        <td>ヒアリング会話ログ</td>
-        <td>ブラウザの localStorage</td>
-        <td>ユーザーが削除するまで保持</td>
-        <td><span class="badge-no">なし</span></td>
-      </tr>
-      <tr>
-        <td>coverage_map.json</td>
-        <td>ブラウザの localStorage</td>
-        <td>ユーザーが削除するまで保持</td>
-        <td><span class="badge-no">なし</span></td>
-      </tr>
-      <tr>
-        <td>生成済み記事（Markdown）</td>
-        <td>ブラウザの localStorage</td>
-        <td>ユーザーが削除するまで保持</td>
-        <td><span class="badge-no">なし</span></td>
-      </tr>
-      <tr>
-        <td>生成済みアイキャッチ画像</td>
-        <td>ブラウザの localStorage</td>
-        <td>ユーザーが削除するまで保持</td>
-        <td><span class="badge-no">なし</span></td>
-      </tr>
-      <tr>
-        <td><strong>note のメールアドレス</strong></td>
-        <td>保存しない（投稿時のみ入力）</td>
-        <td>投稿処理後、サーバーメモリから即破棄</td>
-        <td><span class="badge-warn">通過のみ・保存なし</span></td>
-      </tr>
-      <tr>
-        <td><strong>note のパスワード</strong></td>
-        <td>保存しない（投稿時のみ入力）</td>
-        <td>投稿処理後、サーバーメモリから即破棄</td>
-        <td><span class="badge-warn">通過のみ・保存なし</span></td>
-      </tr>
-      <tr>
-        <td>サーバーのアクセスログ</td>
-        <td>サーバーのログファイル</td>
-        <td>30日程度（運営側で管理）</td>
-        <td><span class="badge-ok">IPのみ・認証情報マスク</span></td>
-      </tr>
-    </tbody>
-  </table>
-</section>
-
-<!-- ═══════════ 10. セキュリティ設計 ═══════════ -->
-<section>
-  <h2 class="section-title">セキュリティ設計</h2>
-  <div class="security-grid">
-
-    <div class="security-item">
-      <div class="sec-icon">🔑</div>
-      <div class="sec-content">
-        <h4>APIキーはサーバーを経由しない</h4>
-        <p>Anthropic / OpenAI のSDKをブラウザ内で直接利用し、APIキーは各プロバイダのサーバーへ直接送信される。我々のサーバーには一切届かない。</p>
-      </div>
-    </div>
-
-    <div class="security-item">
-      <div class="sec-icon">💾</div>
-      <div class="sec-content">
-        <h4>note認証情報の永続化なし</h4>
-        <p>投稿サーバーは note ID/PW をDB・ディスクに一切書き込まない。プロセスメモリでのみ扱い、投稿処理完了後に明示的に破棄する。</p>
-      </div>
-    </div>
-
-    <div class="security-item">
-      <div class="sec-icon">🫣</div>
-      <div class="sec-content">
-        <h4>ログのマスキング</h4>
-        <p>FastAPI のミドルウェアでリクエストボディ中のパスワードを自動マスク。アクセスログにメールアドレス・パスワードを残さない。</p>
-      </div>
-    </div>
-
-    <div class="security-item">
-      <div class="sec-icon">🔒</div>
-      <div class="sec-content">
-        <h4>HTTPS 必須 / CORS 制限</h4>
-        <p>HTTP 経由のアクセスは強制リダイレクト。投稿サーバーはフロントエンドのドメインからのみアクセス可能（CORS）。</p>
-      </div>
-    </div>
-
-    <div class="security-item">
-      <div class="sec-icon">⏱</div>
-      <div class="sec-content">
-        <h4>レート制限</h4>
-        <p>同一IPからの投稿リクエストは10件/時間程度に制限。悪用や負荷集中を防ぐ。</p>
-      </div>
-    </div>
-
-    <div class="security-item">
-      <div class="sec-icon">📂</div>
-      <div class="sec-content">
-        <h4>オープンソース化で透明性確保</h4>
-        <p>フロントエンド・投稿サーバーともにGitHub公開。「何がどこに送信されるか」をユーザーが自分のコードリーディングで検証できる。</p>
-      </div>
-    </div>
-
-  </div>
-</section>
-
-<!-- ═══════════ 11. クロスプラットフォーム対応 ═══════════ -->
-<section>
-  <h2 class="section-title">クロスプラットフォーム対応 ─ Web化のメリット</h2>
-  <div class="platform-grid">
-    <div class="platform-card">
-      <div class="icon">🖥</div>
-      <div class="name">Windows</div>
-      <span class="check">✓</span>
-    </div>
-    <div class="platform-card">
-      <div class="icon">💻</div>
-      <div class="name">macOS</div>
-      <span class="check">✓</span>
-    </div>
-    <div class="platform-card">
-      <div class="icon">🐧</div>
-      <div class="name">Linux</div>
-      <span class="check">✓</span>
-    </div>
-    <div class="platform-card">
-      <div class="icon">📱</div>
-      <div class="name">iOS</div>
-      <span class="check">✓</span>
-    </div>
-    <div class="platform-card">
-      <div class="icon">🤖</div>
-      <div class="name">Android</div>
-      <span class="check">✓</span>
-    </div>
-  </div>
-
-  <div class="notice">
-    <strong>注:</strong> スマホでの記事生成は技術的には可能だが、長文生成時の処理時間や画面サイズを考えると、PC ブラウザを推奨。スマホ最適化（タッチUI・縦長レイアウト等）は段階的に対応する。
-  </div>
-</section>
-
-<!-- ═══════════ 12. 開発フェーズ ═══════════ -->
-<section>
-  <h2 class="section-title">開発フェーズ</h2>
-  <div class="timeline">
-
-    <div class="tl-item active">
-      <div class="tl-header">MVP 1</div>
-      <div class="tl-body">フロントだけで Phase A→B→C を1記事通す。アイキャッチ含む。投稿サーバー未実装。</div>
-    </div>
-    <div class="tl-arrow">→</div>
-
-    <div class="tl-item">
-      <div class="tl-header">MVP 2</div>
-      <div class="tl-body">10記事連続生成。localStorage に履歴永続化。途中再開機能。</div>
-    </div>
-    <div class="tl-arrow">→</div>
-
-    <div class="tl-item">
-      <div class="tl-header">投稿サーバー</div>
-      <div class="tl-body">FastAPI + Playwright を構築。Render または Fly.io にデプロイ。</div>
-    </div>
-    <div class="tl-arrow">→</div>
-
-    <div class="tl-item">
-      <div class="tl-header">統合</div>
-      <div class="tl-body">フロントから投稿サーバーへ接続。E2E 動作確認。</div>
-    </div>
-    <div class="tl-arrow">→</div>
-
-    <div class="tl-item">
-      <div class="tl-header">ガイド整備</div>
-      <div class="tl-body">APIキー取得スクショ整備。費用明示。利用規約・プライバシーポリシー作成。</div>
-    </div>
-    <div class="tl-arrow">→</div>
-
-    <div class="tl-item">
-      <div class="tl-header">公開</div>
-      <div class="tl-body">ドメイン取得・本番デプロイ・GitHub 公開・SNS 告知。</div>
-    </div>
-
-  </div>
-
-  <div class="notice" style="margin-top: 16px;">
-    <strong>運営コスト:</strong> フロントエンドは Cloudflare Pages / Vercel の無料枠で運用可能。投稿サーバーは Render 無料枠（コールドスタートあり）か Fly.io（月 $5 程度）。ドメイン代を含めても <strong>月数百円〜数千円</strong> で運営できる。
-  </div>
-</section>
-
-<!-- ═══════════ 13. 未確定事項 ═══════════ -->
-<section>
-  <h2 class="section-title">実装着手前に決めたい事項</h2>
-  <div class="security-grid">
-    <div class="security-item">
-      <div class="sec-icon">☁️</div>
-      <div class="sec-content">
-        <h4>投稿サーバーのデプロイ先確定</h4>
-        <p>Render 無料枠（コールドスタートあり）か、Fly.io（月$5・安定）か、自前 VPS か。初期は無料枠で開始し、利用者が増えたら有料へ移行する案も。</p>
-      </div>
-    </div>
-    <div class="security-item">
-      <div class="sec-icon">🔍</div>
-      <div class="sec-content">
-        <h4>note 有料境界線 UI の事前検証</h4>
-        <p>note の編集画面で「ここから有料」ボタンのPlaywright操作が安定するかを、実際のブラウザで手動確認が必要。note の UI 変更頻度が高いため要事前検証。</p>
-      </div>
-    </div>
-    <div class="security-item">
-      <div class="sec-icon">📄</div>
-      <div class="sec-content">
-        <h4>ナレッジドキュメントの取り扱い</h4>
-        <p>フロントエンドJSにバンドルすると GitHub 公開時に全文露出する。サーバー側で保護するか、そもそも公開を許容するか、設計判断が必要。</p>
-      </div>
-    </div>
-    <div class="security-item">
-      <div class="sec-icon">📱</div>
-      <div class="sec-content">
-        <h4>スマホ対応のスコープ</h4>
-        <p>投稿まで含めて完全対応するか、生成だけスマホ・投稿はPC推奨にするか。スマホの localStorage 容量制限（5MB前後）も考慮要素。</p>
-      </div>
-    </div>
-    <div class="security-item">
-      <div class="sec-icon">⚖️</div>
-      <div class="sec-content">
-        <h4>利用規約・プライバシーポリシー</h4>
-        <p>「note認証情報はメモリで処理し保存しない」「アクセスログにIP保持」などを明示。法務確認の要否を判断する。</p>
-      </div>
-    </div>
-    <div class="security-item">
-      <div class="sec-icon">💡</div>
-      <div class="sec-content">
-        <h4>ヒアリングモデルの実機検証</h4>
-        <p>Haiku 4.5 だけで対話品質（オウム返し・空虚な褒め禁止・寄り添いの距離感）が担保できるか、実機でのテストが必要。</p>
-      </div>
-    </div>
-  </div>
-</section>
-
-</div><!-- /.page -->
-
-<footer style="margin-top:60px;padding:20px 48px;background:var(--bg3);border-top:1px solid var(--border);font-size:12px;color:var(--text-muted);">
-  note 自動投稿ツール ─ Web版 設計図 &nbsp;|&nbsp; 参照: <code>docs/ARCHITECTURE.md</code> &nbsp;|&nbsp; ナレッジ原典: <code>knowledge/note AIツール 統合ナレッジドキュメント.md</code>
-</footer>
-
 </body>
 </html>
